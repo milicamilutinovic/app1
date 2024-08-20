@@ -1,63 +1,115 @@
 package com.example.app1
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import com.google.android.gms.location.FusedLocationProviderClient
+import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationResult
-import com.google.android.gms.location.LocationRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 class LocationService : Service() {
 
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationRequest: LocationRequest
-    private lateinit var locationCallback: LocationCallback
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private lateinit var locationClient: LocationClient
+
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
+    }
 
     override fun onCreate() {
         super.onCreate()
-
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-
-        locationRequest = LocationRequest.create().apply {
-            interval = 10000 // 10 seconds
-            fastestInterval = 5000 // 5 seconds
-            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-        }
-
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult) {
-                super.onLocationResult(locationResult)
-                locationResult.locations.forEach { location ->
-                    Log.d("LocationService", "Location: ${location.latitude}, ${location.longitude}")
-                    // Send location to server here
-                }
-            }
-        }
-
-        startLocationUpdates()
-    }
-
-    private fun startLocationUpdates() {
-        if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
-        }
+        createNotificationChannel()
+        locationClient = LocationClientImpl(
+            applicationContext,
+            LocationServices.getFusedLocationProviderClient(applicationContext)
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Handle any intents if necessary
+        Log.d("LocationService", "Location service started")
+        startForeground(NOTIFICATION_ID, createNotification())
+        startLocationUpdates()
         return START_STICKY
+    }
+
+    private fun startLocationUpdates() {
+        val notificationManager = getSystemService(NotificationManager::class.java)
+
+        locationClient
+            .getLocationUpdates(10000L) // Update interval in milliseconds
+            .catch { e -> e.printStackTrace() }
+            .onEach { location ->
+                val lat = location.latitude.toString()
+                val long = location.longitude.toString()
+                val updatedNotification = createNotification("Location: ($lat, $long)")
+                notificationManager.notify(NOTIFICATION_ID, updatedNotification)
+
+                // Send the updated location via Broadcast
+                sendLocationUpdate(lat, long)
+            }
+            .launchIn(serviceScope)
+    }
+
+    private fun sendLocationUpdate(lat: String, long: String) {
+        val intent = Intent("LOCATION_UPDATE")
+        intent.putExtra("latitude", lat)
+        intent.putExtra("longitude", long)
+        sendBroadcast(intent)
+    }
+
+    private fun createNotificationChannel() {
+        val notificationChannelId = "LOCATION_SERVICE_CHANNEL"
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                notificationChannelId,
+                "Location Service",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Tracks your location in the background."
+            }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun createNotification(contentText: String = "Location tracking service is running"): android.app.Notification {
+        val notificationChannelId = "LOCATION_SERVICE_CHANNEL"
+        Log.d("LocationService", "Creating notification with content: $contentText")
+        val notificationIntent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            notificationIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        return NotificationCompat.Builder(this, notificationChannelId)
+            .setContentTitle("Tracking Location")
+            .setContentText(contentText)
+            .setSmallIcon(R.drawable.ic_launcher_background) // Use a valid drawable resource
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .build()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        fusedLocationClient.removeLocationUpdates(locationCallback)
+        serviceScope.cancel()
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
+    companion object {
+        private const val NOTIFICATION_ID = 1
     }
 }

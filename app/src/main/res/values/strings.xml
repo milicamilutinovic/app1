@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">LegacyExplorer</string>
-
+    <string name="google_map_api_key">AIzaSyCZ6XT9RRce9bsyR1pA99Bm9nlHD8p_I74</string>
 </resources>

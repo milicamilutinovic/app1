@@ -35,7 +35,6 @@ import coil.compose.rememberImagePainter
 import com.example.app1.AuthState
 import com.example.app1.AuthViewModel
 
-@Preview
 @Composable
 fun RegisterPage(
     modifier: Modifier = Modifier,

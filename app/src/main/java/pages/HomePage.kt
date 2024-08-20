@@ -2,24 +2,35 @@ package pages
 
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
-import android.location.Location
 import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.example.app1.AuthState
 import com.example.app1.AuthViewModel
-import com.google.android.gms.location.*
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.*
+import com.google.maps.android.compose.Circle
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -30,36 +41,32 @@ fun HomePage(modifier: Modifier = Modifier, navController: NavController, authVi
 
     // Manage current location state
     val currentLocation = remember { mutableStateOf<LatLng?>(null) }
-    val searchQuery = remember { mutableStateOf("") }
 
     // Initialize FusedLocationProviderClient
     val fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context)
 
-    // Create a LocationRequest to define how location updates should be received
-    val locationRequest = LocationRequest.create().apply {
+    // Request location updates
+    val locationRequest = com.google.android.gms.location.LocationRequest.create().apply {
         interval = 10000 // Update interval in milliseconds
         fastestInterval = 5000 // Fastest update interval in milliseconds
-        priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-    }
-
-    // Create a LocationCallback to handle location updates
-    val locationCallback = object : LocationCallback() {
-        override fun onLocationResult(locationResult: LocationResult) {
-            super.onLocationResult(locationResult)
-            locationResult.locations.forEach { location ->
-                Log.d("HomePage", "Updated Location: ${location.latitude}, ${location.longitude}")
-                currentLocation.value = LatLng(location.latitude, location.longitude)
-            }
-        }
+        priority = com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY
     }
 
     // Start location updates
     LaunchedEffect(Unit) {
         if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
+            fusedLocationClient.requestLocationUpdates(locationRequest, object : com.google.android.gms.location.LocationCallback() {
+                override fun onLocationResult(locationResult: com.google.android.gms.location.LocationResult) {
+                    super.onLocationResult(locationResult)
+                    locationResult.locations.forEach { location ->
+                        Log.d("HomePage", "Updated Location: ${location.latitude}, ${location.longitude}")
+                        currentLocation.value = LatLng(location.latitude, location.longitude)
+                    }
+                }
+            }, null)
         } else {
             // Handle the case where permission is not granted
-            Log.d("HomePage", "Location permission not granted")
+            println("Location permission not granted")
         }
     }
 
@@ -82,53 +89,180 @@ fun HomePage(modifier: Modifier = Modifier, navController: NavController, authVi
         }
     }
 
-    Column(
+    // State to store all added markers
+    val markers = remember { mutableStateListOf<Pair<LatLng, String>>() }
+    var selectedMarker by remember { mutableStateOf<LatLng?>(null) }
+    var showDialog by remember { mutableStateOf(false) }
+    val markerName = remember { mutableStateOf(TextFieldValue("")) }
+
+    // Dropdown menu state
+    var expanded by remember { mutableStateOf(false) }
+
+    // Search bar state
+    val searchQuery = remember { mutableStateOf(TextFieldValue("")) }
+
+    // Filter buttons state
+    var selectedColor by remember { mutableStateOf<Color?>(null) }
+
+    if (showDialog) {
+        // Show a dialog to input marker name
+        MarkerNameDialog(
+            markerName = markerName,
+            onDismiss = { showDialog = false },
+            onConfirm = {
+                markers.add(Pair(selectedMarker!!, markerName.value.text))
+                showDialog = false
+            }
+        )
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .background(Color.Black)
     ) {
-        // Search Bar
-        OutlinedTextField(
-            value = searchQuery.value,
-            onValueChange = { searchQuery.value = it },
-            label = { Text("Search") },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-        )
-
-        // Google Map
+        // Add Google Map
         GoogleMap(
-            modifier = Modifier
-                .weight(1f),
-            cameraPositionState = cameraPositionState
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            onMapClick = { latLng ->
+                selectedMarker = latLng
+                showDialog = true // Show dialog to name the marker
+            }
         ) {
             currentLocation.value?.let {
+                Circle(
+                    center = it,
+                    radius = 100.0, // Radius in meters
+                    strokeColor = Color.Blue,
+                    strokeWidth = 2f,
+                    fillColor = Color.Blue.copy(alpha = 0.3f)
+                )
                 Marker(
                     state = MarkerState(position = it),
-                    title = "Your Location"
+                    title = "My Location",
+                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE) // Optional: Different color for marker
                 )
+            }
+            // Filter and add markers from the list based on search query and color filter
+            markers.filter { it.second.contains(searchQuery.value.text, ignoreCase = true) }
+                .forEach { (location, name) ->
+                    Marker(
+                        state = MarkerState(position = location),
+                        title = name,
+                        onInfoWindowClick = {
+                            markers.remove(Pair(location, name)) // Remove the selected marker
+                        },
+                        icon = if (selectedColor == null || selectedColor == Color.Red) {
+                            BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+                        } else {
+                            BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE) // Replace with your "Arno" color
+                        }
+                    )
+                }
+        }
+
+        // Dropdown menu and search bar on top of the map
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentSize(Alignment.TopStart),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextField(
+                    value = searchQuery.value,
+                    onValueChange = { newValue -> searchQuery.value = newValue },
+                    placeholder = { Text("Search", color = Color.Red) },
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { expanded = true }) {
+                    Icon(imageVector = Icons.Default.MoreVert, contentDescription = "More options", tint = Color.Red)
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.background(Color.Red) // Background color of dropdown menu
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("User Profile", color = Color.Black) },
+                        onClick = {
+                            expanded = false
+                            navController.navigate("user_profile")
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("All Users", color = Color.Black) },
+                        onClick = {
+                            expanded = false
+                            navController.navigate("all_users")
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Settings", color = Color.Black) },
+                        onClick = {
+                            expanded = false
+                            navController.navigate("settings")
+                        }
+                    )
+                }
             }
         }
 
-        // Filter Button
-        TextButton(onClick = {
-            // Handle filter button click
-        }, modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Filter", fontSize = 16.sp)
-        }
+        // Filter buttons at the bottom of the map
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .wrapContentSize(Alignment.BottomCenter),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            TextButton(
+                onClick = { selectedColor = Color.Blue },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red,
+                    contentColor = Color.Black
+                )
+            ) {
+                Text("Filter")
+            }
 
-        // Button to open list of options
-        TextButton(onClick = {
-            // Navigate to options list
-            navController.navigate("options_list")
-        }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            Text(text = "Show Options", fontSize = 16.sp)
-        }
-
-        // Sign Out Button
-        TextButton(onClick = {
-            authViewModel.signout()
-        }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            Text(text = "Sign out")
         }
     }
+}
+
+@Composable
+fun MarkerNameDialog(
+    markerName: MutableState<TextFieldValue>,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Marker Name", color = Color.Red) },
+        text = {
+            TextField(
+                value = markerName.value,
+                onValueChange = { newText -> markerName.value = newText },
+                placeholder = { Text("Enter marker name", color = Color.Gray) }
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("OK", color = Color.Red)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color.Gray)
+            }
+        }
+    )
 }

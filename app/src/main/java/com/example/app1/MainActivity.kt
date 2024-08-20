@@ -9,7 +9,6 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.example.app1.ui.theme.App1Theme
 
@@ -20,10 +19,10 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
             if (isGranted) {
-                // Dozvola je odobrena, možeš nastaviti sa traženjem lokacije
+                // Dozvola je odobrena
                 println("Location permission granted")
             } else {
-                // Dozvola je odbijena, obavesti korisnika
+                // Dozvola je odbijena
                 println("Location permission denied")
             }
         }
