@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -40,58 +41,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import com.google.android.gms.maps.model.MapStyleOptions
 import androidx.compose.runtime.*
+import com.example.app1.MarkerViewModel
 import com.example.app1.R
 
-// Data class for markers
-data class MarkerData(val latitude: Double, val longitude: Double, val name: String)
 
-private const val PREFS_NAME = "app_prefs"
-private const val MARKERS_KEY = "markers_key"
-
-// Save markers to SharedPreferences
-fun saveMarkers(context: Context, markers: List<MarkerData>) {
-    val gson = Gson()
-    val json = gson.toJson(markers)
-    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
-        .putString(MARKERS_KEY, json)
-        .apply()
-}
-
-// Load markers from SharedPreferences
-fun loadMarkers(context: Context): List<MarkerData> {
-    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    val gson = Gson()
-    val json = prefs.getString(MARKERS_KEY, "[]") ?: "[]"
-    val type = object : TypeToken<List<MarkerData>>() {}.type
-    return gson.fromJson(json, type)
-}
-
-class HomeViewModel(private val context: Context) : ViewModel() {
-    private val _markers = MutableStateFlow<List<MarkerData>>(emptyList())
-    val markers: StateFlow<List<MarkerData>> = _markers
-
-    init {
-        loadMarkers()
-    }
-
-    fun addMarker(latitude: Double, longitude: Double, name: String) {
-        val newMarker = MarkerData(latitude, longitude, name)
-        val updatedMarkers = _markers.value + newMarker
-        _markers.value = updatedMarkers
-        saveMarkers(context, updatedMarkers)
-    }
-
-    private fun loadMarkers() {
-        _markers.value = loadMarkers(context)
-    }
-
-    fun clearMarkers() {
-        _markers.value = emptyList()
-        saveMarkers(context, _markers.value)
-    }
-}
-
-@SuppressLint("MissingPermission")
 @Composable
 fun HomePage(
     modifier: Modifier = Modifier,
@@ -100,7 +53,7 @@ fun HomePage(
 ) {
     val context = LocalContext.current
     val authState by authViewModel.authState.observeAsState()
-    val homeViewModel: HomeViewModel = viewModel(
+    val homeViewModel: MarkerViewModel = viewModel(
         factory = HomeViewModelFactory(context)
     )
 
@@ -127,7 +80,7 @@ fun HomePage(
             }
     }
 
-    val markers by homeViewModel.markers.collectAsState(initial = emptyList())
+    val markers by homeViewModel.markers.collectAsState()
 
     // Start location updates
     LaunchedEffect(Unit) {
@@ -178,6 +131,9 @@ fun HomePage(
     // Filter buttons state
     var selectedColor by remember { mutableStateOf<Color?>(null) }
 
+    // State for LandmarkFilterDialog
+    var showFilterDialog by remember { mutableStateOf(false) }
+
     if (showDialog) {
         MarkerNameDialog(
             markerName = markerName,
@@ -190,14 +146,20 @@ fun HomePage(
             }
         )
     }
+
+    if (showFilterDialog) {
+        LandmarkFilterDialog(
+            onDismiss = { showFilterDialog = false }
+        )
+    }
+
     var selectedMapStyle by remember { mutableStateOf<MapStyleOptions?>(null) }
-    //selectedMapStyle = MapStyleOptions.loadRawResourceStyle(context, R.raw.map_style)
-    // Recenter Button State
     val recenterMap = {
         currentLocation.value?.let {
             cameraPositionState.position = CameraPosition.fromLatLngZoom(it, 15f)
         }
     }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -206,20 +168,12 @@ fun HomePage(
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
-            //mapStyleOptions = selectedMapStyle,
             onMapClick = { latLng ->
                 selectedMarker = latLng
                 showDialog = true // Show dialog to name the marker
             }
         ) {
             currentLocation.value?.let {
-//                Circle(
-//                    center = it,
-//                    radius = 100.0, // Radius in meters
-//                    strokeColor = Color.Blue,
-//                    strokeWidth = 2f,
-//                    fillColor = Color.Blue.copy(alpha = 0.3f)
-//                )
                 Marker(
                     state = MarkerState(position = it),
                     title = "My Location",
@@ -227,11 +181,11 @@ fun HomePage(
                 )
             }
 
-            markers.filter { it.name.contains(searchQuery.value.text, ignoreCase = true) }
+            markers.filter { it.eventName.contains(searchQuery.value.text, ignoreCase = true) }
                 .forEach { marker ->
                     Marker(
-                        state = MarkerState(position = LatLng(marker.latitude, marker.longitude)),
-                        title = marker.name,
+                        state = MarkerState(position = LatLng(marker.location.latitude, marker.location.longitude)),
+                        title = marker.eventName,
                         icon = if (selectedColor == null || selectedColor == Color.Red) {
                             BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
                         } else {
@@ -284,8 +238,7 @@ fun HomePage(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("All Users", color = Color.Black)
-                        },
+                        text = { Text("All Users", color = Color.Black) },
                         onClick = {
                             expanded = false
                             navController.navigate("all_users")
@@ -310,7 +263,9 @@ fun HomePage(
                 horizontalArrangement = Arrangement.Center
             ) {
                 TextButton(
-                    onClick = { selectedColor = Color.Blue },
+                    onClick = {
+                        showFilterDialog = true // Show filter dialog
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Red,
                         contentColor = Color.Black
@@ -338,6 +293,7 @@ fun HomePage(
         }
     }
 }
+
 
 @Composable
 fun MarkerNameDialog(
@@ -370,8 +326,8 @@ fun MarkerNameDialog(
 class HomeViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
-            return HomeViewModel(context) as T
+        if (modelClass.isAssignableFrom(MarkerViewModel::class.java)) {
+            return MarkerViewModel(context) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

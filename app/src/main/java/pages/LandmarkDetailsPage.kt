@@ -18,6 +18,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.app1.LandmarkViewModel
 import com.example.app1.LandmarkViewModelFactory
+import com.example.app1.Marker
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -32,7 +33,7 @@ fun LandmarkDetailsPage(
         ?.get<String>("markerData")
 
     // Parse JSON string to MarkerData object
-    val markerData = Gson().fromJson(markerDataJson, MarkerData::class.java)
+    val markerData = Gson().fromJson(markerDataJson, Marker::class.java)
 
     // Handle the state of the landmark details
     val landmark by landmarkViewModel.landmark.collectAsState()
@@ -65,7 +66,7 @@ fun LandmarkDetailsPage(
         // Display the details of the landmark
         markerData?.let {
             Text(
-                text = it.name,
+                text = it.eventName,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Red,
@@ -73,12 +74,12 @@ fun LandmarkDetailsPage(
             )
 
             Text(
-                text = "Latitude: ${it.latitude}",
+                text = "Latitude: ${it.location.latitude}",
                 color = Color.White,
                 fontSize = 16.sp
             )
             Text(
-                text = "Longitude: ${it.longitude}",
+                text = "Longitude: ${it.location.longitude}",
                 color = Color.White,
                 fontSize = 16.sp
             )

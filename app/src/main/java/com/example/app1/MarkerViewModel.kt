@@ -23,19 +23,19 @@ data class Marker(
 )
 
 class MarkerViewModel(private val context: Context) : ViewModel() {
-    private val _landmarks = MutableStateFlow<List<Marker>>(emptyList())
-    val landmarks: StateFlow<List<Marker>> = _landmarks
+    private val _markers = MutableStateFlow<List<Marker>>(emptyList())
+    val markers: StateFlow<List<Marker>> = _markers
 
     private val firestore = FirebaseFirestore.getInstance()
     private var markerListenerRegistration: ListenerRegistration? = null
 
     init {
-        loadLandmarksFromFirebase()
+        loadMarkers()
     }
 
-    fun addLandmark(latitude: Double, longitude: Double, name: String) {
+    fun addMarker(latitude: Double, longitude: Double, name: String) {
         val newLandmark = Marker()
-        firestore.collection("markers")
+        firestore.collection("landmarks")
             .add(newLandmark)
             .addOnSuccessListener {
                 Log.d("HomeViewModel", "Landmark added successfully")
@@ -44,26 +44,55 @@ class MarkerViewModel(private val context: Context) : ViewModel() {
                 Log.e("HomeViewModel", "Error adding landmark: ", e)
             }
     }
+    private var listenerRegistration: ListenerRegistration? = null
 
-    private fun loadLandmarksFromFirebase() {
-        viewModelScope.launch {
-            firestore.collection("markers").get().addOnSuccessListener { result ->
-                val landmarksl = result.map { document ->
-                    Marker(
-                        userId = document.getString("userId") ?: "",
-                        eventName = document.getString("eventName") ?: "",
-                        eventType = document.getString("eventType") ?: "",
-                        description = document.getString("description") ?: "",
-                        crowd = document.getLong("crowd")?.toInt() ?: 0,
-                        mainImage = document.getString("mainImage") ?: "",
-                        galleryImages = document.get("galleryImages") as? List<String> ?: emptyList(),
-                        location = document.getGeoPoint("location") ?: GeoPoint(0.0, 0.0)
-                    )
+
+    //druga zimena
+    private fun loadMarkers() {
+        listenerRegistration = firestore.collection("landmarks")
+            .addSnapshotListener { snapshots, e ->
+                if (e != null) {
+                    Log.w("MarkerViewModel", "Listen failed.", e)
+                    return@addSnapshotListener
                 }
-                _landmarks.value = landmarksl
+
+                if (snapshots != null) {
+                    val markerList = snapshots.mapNotNull { doc ->
+                        doc.toObject(Marker::class.java).copy(userId = doc.id)
+                    }
+                    _markers.value = markerList
+                }
             }
-        }
     }
+
+    //promenila ovo
+//    private fun loadMarkersFromFirebase() {
+//        firestore.collection("landmarks")
+//            .addSnapshotListener { snapshot, e ->
+//                if (e != null) {
+//                    Log.w("MarkerViewModel", "Listen failed.", e)
+//                    return@addSnapshotListener
+//                }
+//
+//                if (snapshot != null && !snapshot.isEmpty) {
+//                    val markerList = snapshot.documents.map { document ->
+//                        Marker(
+//                            userId = document.getString("userId") ?: "",
+//                            eventName = document.getString("eventName") ?: "",
+//                            eventType = document.getString("eventType") ?: "",
+//                            description = document.getString("description") ?: "",
+//                            crowd = document.getLong("crowd")?.toInt() ?: 0,
+//                            mainImage = document.getString("mainImage") ?: "",
+//                            galleryImages = document.get("galleryImages") as? List<String> ?: emptyList(),
+//                            location = document.getGeoPoint("location") ?: GeoPoint(0.0, 0.0)
+//                        )
+//                    }
+//                    _markers.value = markerList
+//                } else {
+//                    Log.d("MarkerViewModel", "Current data: null")
+//                }
+//            }
+//    }
 
     override fun onCleared() {
         super.onCleared()
