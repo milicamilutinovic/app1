@@ -1,6 +1,7 @@
 package pages
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.compose.foundation.background
@@ -16,8 +17,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.app1.AuthState
 import com.example.app1.AuthViewModel
@@ -31,13 +34,75 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import com.google.android.gms.maps.model.MapStyleOptions
+import androidx.compose.runtime.*
+import com.example.app1.R
+
+// Data class for markers
+data class MarkerData(val latitude: Double, val longitude: Double, val name: String)
+
+private const val PREFS_NAME = "app_prefs"
+private const val MARKERS_KEY = "markers_key"
+
+// Save markers to SharedPreferences
+fun saveMarkers(context: Context, markers: List<MarkerData>) {
+    val gson = Gson()
+    val json = gson.toJson(markers)
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        .putString(MARKERS_KEY, json)
+        .apply()
+}
+
+// Load markers from SharedPreferences
+fun loadMarkers(context: Context): List<MarkerData> {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val gson = Gson()
+    val json = prefs.getString(MARKERS_KEY, "[]") ?: "[]"
+    val type = object : TypeToken<List<MarkerData>>() {}.type
+    return gson.fromJson(json, type)
+}
+
+class HomeViewModel(private val context: Context) : ViewModel() {
+    private val _markers = MutableStateFlow<List<MarkerData>>(emptyList())
+    val markers: StateFlow<List<MarkerData>> = _markers
+
+    init {
+        loadMarkers()
+    }
+
+    fun addMarker(latitude: Double, longitude: Double, name: String) {
+        val newMarker = MarkerData(latitude, longitude, name)
+        val updatedMarkers = _markers.value + newMarker
+        _markers.value = updatedMarkers
+        saveMarkers(context, updatedMarkers)
+    }
+
+    private fun loadMarkers() {
+        _markers.value = loadMarkers(context)
+    }
+
+    fun clearMarkers() {
+        _markers.value = emptyList()
+        saveMarkers(context, _markers.value)
+    }
+}
 
 @SuppressLint("MissingPermission")
 @Composable
-fun HomePage(modifier: Modifier = Modifier, navController: NavController, authViewModel: AuthViewModel) {
-
+fun HomePage(
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    authViewModel: AuthViewModel
+) {
     val context = LocalContext.current
-    val authState = authViewModel.authState.observeAsState()
+    val authState by authViewModel.authState.observeAsState()
+    val homeViewModel: HomeViewModel = viewModel(
+        factory = HomeViewModelFactory(context)
+    )
 
     // Manage current location state
     val currentLocation = remember { mutableStateOf<LatLng?>(null) }
@@ -52,6 +117,18 @@ fun HomePage(modifier: Modifier = Modifier, navController: NavController, authVi
         priority = com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY
     }
 
+    // Handle new markers
+    LaunchedEffect(Unit) {
+        navController.currentBackStackEntry?.savedStateHandle?.getLiveData<Pair<LatLng, String>>("newMarker")
+            ?.observeForever { newMarker ->
+                newMarker?.let {
+                    homeViewModel.addMarker(it.first.latitude, it.first.longitude, it.second) // Add marker to ViewModel
+                }
+            }
+    }
+
+    val markers by homeViewModel.markers.collectAsState(initial = emptyList())
+
     // Start location updates
     LaunchedEffect(Unit) {
         if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -65,15 +142,13 @@ fun HomePage(modifier: Modifier = Modifier, navController: NavController, authVi
                 }
             }, null)
         } else {
-            // Handle the case where permission is not granted
-            println("Location permission not granted")
+            Log.e("HomePage", "Location permission not granted")
         }
     }
 
-    LaunchedEffect(authState.value) {
-        when (authState.value) {
-            is AuthState.Unauthenticated -> navController.navigate("login")
-            else -> Unit
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Unauthenticated) {
+            navController.navigate("login")
         }
     }
 
@@ -89,8 +164,7 @@ fun HomePage(modifier: Modifier = Modifier, navController: NavController, authVi
         }
     }
 
-    // State to store all added markers
-    val markers = remember { mutableStateListOf<Pair<LatLng, String>>() }
+    // State to manage marker selection and dialog visibility
     var selectedMarker by remember { mutableStateOf<LatLng?>(null) }
     var showDialog by remember { mutableStateOf(false) }
     val markerName = remember { mutableStateOf(TextFieldValue("")) }
@@ -105,64 +179,74 @@ fun HomePage(modifier: Modifier = Modifier, navController: NavController, authVi
     var selectedColor by remember { mutableStateOf<Color?>(null) }
 
     if (showDialog) {
-        // Show a dialog to input marker name
         MarkerNameDialog(
             markerName = markerName,
             onDismiss = { showDialog = false },
             onConfirm = {
-                markers.add(Pair(selectedMarker!!, markerName.value.text))
+                selectedMarker?.let {
+                    homeViewModel.addMarker(it.latitude, it.longitude, markerName.value.text)
+                }
                 showDialog = false
             }
         )
     }
-
+    var selectedMapStyle by remember { mutableStateOf<MapStyleOptions?>(null) }
+    //selectedMapStyle = MapStyleOptions.loadRawResourceStyle(context, R.raw.map_style)
+    // Recenter Button State
+    val recenterMap = {
+        currentLocation.value?.let {
+            cameraPositionState.position = CameraPosition.fromLatLngZoom(it, 15f)
+        }
+    }
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Add Google Map
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
+            //mapStyleOptions = selectedMapStyle,
             onMapClick = { latLng ->
                 selectedMarker = latLng
                 showDialog = true // Show dialog to name the marker
             }
         ) {
             currentLocation.value?.let {
-                Circle(
-                    center = it,
-                    radius = 100.0, // Radius in meters
-                    strokeColor = Color.Blue,
-                    strokeWidth = 2f,
-                    fillColor = Color.Blue.copy(alpha = 0.3f)
-                )
+//                Circle(
+//                    center = it,
+//                    radius = 100.0, // Radius in meters
+//                    strokeColor = Color.Blue,
+//                    strokeWidth = 2f,
+//                    fillColor = Color.Blue.copy(alpha = 0.3f)
+//                )
                 Marker(
                     state = MarkerState(position = it),
                     title = "My Location",
                     icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE) // Optional: Different color for marker
                 )
             }
-            // Filter and add markers from the list based on search query and color filter
-            markers.filter { it.second.contains(searchQuery.value.text, ignoreCase = true) }
-                .forEach { (location, name) ->
+
+            markers.filter { it.name.contains(searchQuery.value.text, ignoreCase = true) }
+                .forEach { marker ->
                     Marker(
-                        state = MarkerState(position = location),
-                        title = name,
-                        onInfoWindowClick = {
-                            markers.remove(Pair(location, name)) // Remove the selected marker
-                        },
+                        state = MarkerState(position = LatLng(marker.latitude, marker.longitude)),
+                        title = marker.name,
                         icon = if (selectedColor == null || selectedColor == Color.Red) {
                             BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
                         } else {
-                            BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE) // Replace with your "Arno" color
+                            BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)
+                        } ,
+                        onClick = {
+                            val markerJson = Gson().toJson(marker)
+                            navController.currentBackStackEntry?.savedStateHandle?.set("markerData", markerJson)
+                            navController.navigate("LandmarkDetailsPage")
+                            true
                         }
                     )
                 }
         }
 
-        // Dropdown menu and search bar on top of the map
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -170,6 +254,7 @@ fun HomePage(modifier: Modifier = Modifier, navController: NavController, authVi
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Search and Options Row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -199,7 +284,8 @@ fun HomePage(modifier: Modifier = Modifier, navController: NavController, authVi
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("All Users", color = Color.Black) },
+                        text = { Text("All Users", color = Color.Black)
+                        },
                         onClick = {
                             expanded = false
                             navController.navigate("all_users")
@@ -214,26 +300,41 @@ fun HomePage(modifier: Modifier = Modifier, navController: NavController, authVi
                     )
                 }
             }
-        }
 
-        // Filter buttons at the bottom of the map
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .wrapContentSize(Alignment.BottomCenter),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            TextButton(
-                onClick = { selectedColor = Color.Blue },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Red,
-                    contentColor = Color.Black
-                )
+            // Filter and Add Buttons Row
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .wrapContentSize(Alignment.BottomCenter),
+                horizontalArrangement = Arrangement.Center
             ) {
-                Text("Filter")
-            }
+                TextButton(
+                    onClick = { selectedColor = Color.Blue },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Text("Filter")
+                }
+                Spacer(modifier = Modifier.width(16.dp)) // Add space between the buttons
 
+                TextButton(
+                    onClick = {
+                        currentLocation.value?.let { location ->
+                            navController.currentBackStackEntry?.savedStateHandle?.set("location", location)
+                            navController.navigate("add_landmark")
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Text("Add")
+                }
+            }
         }
     }
 }
@@ -265,4 +366,13 @@ fun MarkerNameDialog(
             }
         }
     )
+}
+class HomeViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
+            return HomeViewModel(context) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
 }

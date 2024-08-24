@@ -1,11 +1,14 @@
 package com.example.app1
 
+//import AddLandmarkPage
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import pages.AddLandmarkPage
 import pages.HomePage
+import pages.LandmarkDetailsPage
 import pages.LocationServicePage
 import pages.LoginPage
 import pages.RegisterPage
@@ -35,6 +38,12 @@ fun MyAppNavigation(modifier: Modifier = Modifier, authViewModel: AuthViewModel)
         }
         composable("settings") {
             LocationServicePage(navController=navController)
+        }
+        composable("add_landmark") {
+            AddLandmarkPage(navController = navController)
+        }
+        composable("LandmarkDetailsPage") {
+            LandmarkDetailsPage(navController = navController)
         }
     })
 }
