@@ -1,12 +1,10 @@
 package pages
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -18,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -30,19 +29,13 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import com.google.android.gms.maps.model.MapStyleOptions
-import androidx.compose.runtime.*
 import com.example.app1.MarkerViewModel
-import com.example.app1.R
 
 
 @Composable
@@ -159,18 +152,32 @@ fun HomePage(
             cameraPositionState.position = CameraPosition.fromLatLngZoom(it, 15f)
         }
     }
+    //DODATO
+   // var markerViewModel:MarkerViewModel= viewModel()
+    val filteredMarkers by homeViewModel.filteredMarkers.observeAsState(emptyList())
+    val isFilterApplied by homeViewModel.isFilterApplied.observeAsState(false) // Da li je filter primenjen
+    var isFilterButtonPressed by remember { mutableStateOf(false) }
+    var isMarkerButtonPressed by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
+        val markersToDisplay = if (isFilterApplied) {
+            filteredMarkers // Prikazujemo filtrirane markere
+        } else {
+            markers // Prikazujemo sve markere
+        }
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             onMapClick = { latLng ->
-                selectedMarker = latLng
-                showDialog = true // Show dialog to name the marker
+                if (!isFilterButtonPressed) {
+                    selectedMarker = latLng
+                    showDialog = true
+                    isMarkerButtonPressed=true
+                } // Show dialog to name the marker
             }
         ) {
             currentLocation.value?.let {
@@ -181,7 +188,7 @@ fun HomePage(
                 )
             }
 
-            markers.filter { it.eventName.contains(searchQuery.value.text, ignoreCase = true) }
+            markersToDisplay.filter { it.eventName.contains(searchQuery.value.text, ignoreCase = true) }
                 .forEach { marker ->
                     Marker(
                         state = MarkerState(position = LatLng(marker.location.latitude, marker.location.longitude)),
@@ -252,6 +259,23 @@ fun HomePage(
                         }
                     )
                 }
+            }
+            Button(
+                onClick = {
+                    homeViewModel.resetFilter() // Resetuje filter
+                },
+                modifier = Modifier
+                    .fillMaxWidth() // Puni širinu
+                    .padding(vertical = 8.dp), // Razmak oko dugmeta
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFF75553) // Boja pozadine dugmeta
+                )
+            ) {
+                Text(
+                    text = "Reset Filter",
+                    fontSize = 16.sp,
+                    color = Color.White
+                )
             }
 
             // Filter and Add Buttons Row

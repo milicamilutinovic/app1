@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app1.Landmark
 import com.example.app1.LandmarkViewModel
+import com.example.app1.MarkerViewModel
 import com.example.app1.Resource
 import com.example.app1.User
 import com.example.app1.UsersViewModel
@@ -53,6 +54,7 @@ fun LandmarkFilterDialog(
         is Resource.loading -> emptyList() // U slučaju učitavanja
     }
 
+    var markerViewModel:MarkerViewModel= viewModel()
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -177,7 +179,7 @@ fun LandmarkFilterDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-
+                markerViewModel.filterMarkers(Category,ChooseEventName,selectedCrowdLevel)
                 onDismiss() // Zatvori dijalog nakon filtriranja
             }) {
                 Text("Filter")

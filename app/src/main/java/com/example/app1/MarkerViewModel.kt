@@ -2,6 +2,8 @@ package com.example.app1
 
 import android.content.Context
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FirebaseFirestore
@@ -28,7 +30,12 @@ class MarkerViewModel(private val context: Context) : ViewModel() {
 
     private val firestore = FirebaseFirestore.getInstance()
     private var markerListenerRegistration: ListenerRegistration? = null
-
+    //dodajem ove dve
+    private val _filteredMarkers = MutableLiveData<List<Marker>>() // Lista filtriranih markera
+    val filteredMarkers: LiveData<List<Marker>> get() = _filteredMarkers
+    //dodato
+    private val _isFilterApplied = MutableLiveData<Boolean>(false) // Stanje da li je filter primenjen
+    val isFilterApplied: LiveData<Boolean> get() = _isFilterApplied
     init {
         loadMarkers()
     }
@@ -93,7 +100,34 @@ class MarkerViewModel(private val context: Context) : ViewModel() {
 //                }
 //            }
 //    }
+    fun filterMarkers(category: String,eventName: String, crowdLevel: Int) {
+        val filtered = _markers.value?.filter { marker ->
 
+
+            // Proveravamo da li marker odgovara kategoriji
+            val matchesCategory = (category != "Select Category" && marker.eventType == category)
+            // Proveravamo da li marker odgovara imenu događaja
+            val matchesEventName = (eventName != "Select Event Name" && marker.eventName == eventName)
+            // Proveravamo da li marker odgovara nivou gužve
+            val matchesCrowdLevel = (crowdLevel != 0 && marker.crowd == crowdLevel)
+            Log.d("MarkerViewModel","crowd:${marker.crowd}")
+
+            // Na osnovu uslova se koristi logički "I"
+            matchesCategory || matchesEventName || matchesCrowdLevel  // Svi uslovi se povezuju sa logičkim "ILI"
+        } ?: emptyList()
+
+        // Postavljamo filtrirane markere
+        _filteredMarkers.value = filtered
+        _isFilterApplied.value = true // Obeležavamo da je filter primenjen
+
+        Log.d("MarkerViewModel", "Filtered markers: ${filtered.joinToString { it.eventName }}")
+    }
+
+
+    fun resetFilter() {
+        _isFilterApplied.value = false // Resetovanje filtera
+        _filteredMarkers.value = emptyList() // Resetovanje filtriranih markera
+    }
     override fun onCleared() {
         super.onCleared()
         markerListenerRegistration?.remove()

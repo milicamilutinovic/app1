@@ -1,5 +1,6 @@
 package pages
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,16 +12,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.app1.LandmarkViewModel
 import com.example.app1.LandmarkViewModelFactory
 import com.example.app1.Marker
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 
 @Composable
 fun LandmarkDetailsPage(
@@ -63,7 +68,7 @@ fun LandmarkDetailsPage(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Display the details of the landmark
+        // Display the details of the marker
         markerData?.let {
             Text(
                 text = it.eventName,
@@ -73,6 +78,79 @@ fun LandmarkDetailsPage(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
+            Text(
+                text = "User ID: ${it.userId}",
+                color = Color.White,
+                fontSize = 16.sp
+            )
+
+            Text(
+                text = "Event Name: ${it.eventName}",
+                color = Color.White,
+                fontSize = 16.sp
+            )
+
+            Text(
+                text = "Event Type: ${it.eventType}",
+                color = Color.White,
+                fontSize = 16.sp
+            )
+
+            Text(
+                text = "Description: ${it.description}",
+                color = Color.White,
+                fontSize = 16.sp
+            )
+
+            Text(
+                text = "Crowd Level: ${it.crowd}",
+                color = Color.White,
+                fontSize = 16.sp
+            )
+
+            // Display main image if available
+            if (it.mainImage.isNotEmpty()) {
+                Log.d("ImageLoad", "Loading image from URL: ${it.mainImage}")
+
+                Spacer(modifier = Modifier.height(16.dp))
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(it.mainImage)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Main Image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .background(Color.Gray)
+                )
+            }
+
+            // Display gallery images if available
+            if (it.galleryImages.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Gallery Images:",
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+                it.galleryImages.forEach { imageUrl ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(imageUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Gallery Image",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .background(Color.Gray)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Latitude: ${it.location.latitude}",
                 color = Color.White,
@@ -90,6 +168,5 @@ fun LandmarkDetailsPage(
                 fontSize = 16.sp
             )
         }
-
     }
 }
