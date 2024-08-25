@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 data class User(
+    val id:String,
     val fullName: String = "",
     val phoneNumber: String = "",
     val photoUrl: String? = null
@@ -17,6 +18,8 @@ class UsersViewModel : ViewModel() {
     private val firestore = FirebaseFirestore.getInstance()
     private val _users = MutableStateFlow<List<User>>(emptyList())
     val users: StateFlow<List<User>> = _users
+    private val _userEvents = MutableStateFlow<Map<String, List<Landmark>>>(emptyMap()) // Mapa za događaje po korisniku
+    val userEvents: StateFlow<Map<String, List<Landmark>>> = _userEvents
 
     init {
         fetchUsers()
@@ -27,6 +30,7 @@ class UsersViewModel : ViewModel() {
             firestore.collection("users").get().addOnSuccessListener { result ->
                 val userList = result.map { document ->
                     User(
+                        id=document.id,
                         fullName = document.getString("fullName") ?: "",
                         phoneNumber = document.getString("phoneNumber") ?: "",
                         photoUrl = document.getString("photoUrl")

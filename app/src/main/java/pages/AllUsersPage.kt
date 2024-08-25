@@ -14,13 +14,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.app1.Landmark
+import com.example.app1.LandmarkViewModel
 import com.example.app1.User
 import com.example.app1.UsersViewModel
 
@@ -41,6 +43,8 @@ fun UsersPage(
     navController: NavController
 ) {
     val usersState = viewModel.users.collectAsState()
+    val landmarkState = remember { mutableStateMapOf<String, List<Landmark>>() }
+    val landmarkViewModel: LandmarkViewModel = viewModel()
 
     Column(
         modifier = Modifier
@@ -58,10 +62,21 @@ fun UsersPage(
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f)
         ) {
             items(usersState.value) { user ->
-                UserItem(user)
+                UserItem(user) { userId ->
+                    // Fetch events for the selected user
+                    landmarkViewModel.filterLandmarksByUserId(userId) { events ->
+                        landmarkState[userId] = events
+                    }
+                }
+
+                // Display the events associated with the user
+                landmarkState[user.id]?.let { events ->
+                    LandmarksList(events)
+                }
             }
         }
 
@@ -81,12 +96,11 @@ fun UsersPage(
 }
 
 @Composable
-fun UserItem(user: User) {
+fun UserItem(user: User, onFetchEvents: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp)
-            .verticalScroll(rememberScrollState()),
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -100,8 +114,8 @@ fun UserItem(user: User) {
                     contentDescription = "Profile Picture",
                     modifier = Modifier
                         .size(60.dp)
-                        .clip(CircleShape), // Clip image to circle shape
-                    contentScale = ContentScale.Crop // Crop image to fit within circle
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
             } else {
                 Text(
@@ -125,6 +139,29 @@ fun UserItem(user: User) {
                 text = "Phone: ${user.phoneNumber}",
                 fontSize = 14.sp,
                 color = Color.White
+            )
+            Button(onClick = { onFetchEvents(user.id) }) {
+                Text(text = "Show Events")
+            }
+        }
+    }
+}
+
+@Composable
+fun LandmarksList(events: List<Landmark>) {
+    Column(modifier = Modifier.padding(start = 16.dp)) {
+        Text(
+            text = "Events:",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Red
+        )
+        for (event in events) {
+            Text(
+                text = event.eventName,
+                fontSize = 14.sp,
+                color = Color.White,
+                modifier = Modifier.padding(vertical = 4.dp)
             )
         }
     }

@@ -26,6 +26,7 @@ import com.google.gson.Gson
 
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.app1.UsersViewModel
 
 @Composable
 fun LandmarkDetailsPage(
@@ -42,13 +43,16 @@ fun LandmarkDetailsPage(
 
     // Handle the state of the landmark details
     val landmark by landmarkViewModel.landmark.collectAsState()
+    val  usersViewModel: UsersViewModel = viewModel() // Inicijalizacija UsersViewModel
 
-    LaunchedEffect(markerData) {
-        markerData?.let {
-            // Fetch details for the specific landmark if needed
-            // For example, landmarkViewModel.getLandmarkDetails(it.id)
-        }
-    }
+    var userName by remember { mutableStateOf("") }
+
+            markerData?.userId?.let { userId ->
+                usersViewModel.users.collectAsState().value.find { user -> user.id == userId }
+                    ?.let { user ->
+                        userName = "${user.fullName}"
+                    }
+            }
 
     Column(
         modifier = Modifier
@@ -79,7 +83,7 @@ fun LandmarkDetailsPage(
             )
 
             Text(
-                text = "User ID: ${it.userId}",
+                text = "User: ${userName}",
                 color = Color.White,
                 fontSize = 16.sp
             )

@@ -1,7 +1,5 @@
 package pages
 
-
-import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -27,31 +25,45 @@ import com.example.app1.MarkerViewModel
 import com.example.app1.Resource
 import com.example.app1.User
 import com.example.app1.UsersViewModel
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+
 
 @Composable
 fun LandmarkFilterDialog(
     onDismiss: () -> Unit,
-    landmarkViewModel: LandmarkViewModel = viewModel(),
+    eventViewModel: LandmarkViewModel = viewModel(),
     usersViewModel: UsersViewModel = viewModel()
 ) {
     var isCategoryDropdownExpanded by remember { mutableStateOf(false) }
     var isUserDropdownExpanded by remember { mutableStateOf(false) }
     var isEventNameDropdownExpanded by remember { mutableStateOf(false) }
-    var ChooseUser by remember { mutableStateOf<User?>(null) }
-    var ChooseEventName by remember { mutableStateOf("Select Landmark Name") }
+    var chooseUser by remember { mutableStateOf<User?>(null) }
+    var chooseEventName by remember { mutableStateOf("Select Landmark Name") }
     val usersState by usersViewModel.users.collectAsState()
     var isCrowdLevelDropdownExpanded by remember { mutableStateOf(false) }
-    var selectedCrowdLevel by remember { mutableStateOf(1) }
+    var selectedCrowdLevel by remember { mutableStateOf(0) }
+    var category by remember { mutableStateOf("Select Category") }
 
-    var Category by remember { mutableStateOf("Select Category") }
+    val eventsResource by eventViewModel.landmark.collectAsState()
 
-    val eventsResource by landmarkViewModel.landmark.collectAsState()
+    // Inspecting eventsResource and creating eventsState
     val eventsState = when (eventsResource) {
-        is Resource.Success -> (eventsResource as Resource.Success<List<Landmark>>).result
-        is Resource.Failure -> emptyList()
-        is Resource.loading -> emptyList()
+        is Resource.Success -> {
+            val landmarks = (eventsResource as Resource.Success<List<Landmark>>).result
+            if (landmarks.isEmpty()) {
+                println("Debug: Landmarks list is empty")
+            } else {
+                println("Debug: Landmarks loaded successfully: $landmarks")
+            }
+            landmarks
+        }
+        is Resource.Failure -> {
+            println("Debug: Failed to load landmarks")
+            emptyList<Landmark>()
+        }
+        is Resource.loading -> {
+            println("Debug: Landmarks are loading")
+            emptyList<Landmark>()
+        }
     }
 
     val markerViewModel: MarkerViewModel = viewModel()
@@ -67,53 +79,81 @@ fun LandmarkFilterDialog(
         },
         text = {
             Column {
-                // Category Dropdown Menu
+                // Dropdown for categories
                 TextButton(onClick = { isCategoryDropdownExpanded = !isCategoryDropdownExpanded }) {
-                    Text(Category)
+                    Text(category)
                 }
 
                 DropdownMenu(
                     expanded = isCategoryDropdownExpanded,
                     onDismissRequest = { isCategoryDropdownExpanded = false }
                 ) {
-                    listOf("Crkva", "Spomenik", "Park", "Arheolosko nalaziste").forEach { cat ->
-                        DropdownMenuItem(
-                            onClick = {
-                                Category = cat
-                                isCategoryDropdownExpanded = false
-                            },
-                            text = { Text(cat) }
-                        )
-                    }
+                    DropdownMenuItem(
+                        onClick = {
+                            category = "Crkva"
+                            isCategoryDropdownExpanded = false
+                        },
+                        text = { Text("Crkva") }
+                    )
+                    DropdownMenuItem(
+                        onClick = {
+                            category = "Spomenik"
+                            isCategoryDropdownExpanded = false
+                        },
+                        text = { Text("Spomenik") }
+                    )
+                    DropdownMenuItem(
+                        onClick = {
+                            category = "Arheolosko nalaziste"
+                            isCategoryDropdownExpanded = false
+                        },
+                        text = { Text("Arheolosko nalaziste") }
+                    )
+                    DropdownMenuItem(
+                        onClick = {
+                            category = "Park"
+                            isCategoryDropdownExpanded = false
+                        },
+                        text = { Text("Park") }
+                    )
                 }
 
+                // Spacer
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Event Name Dropdown Menu
+                // Dropdown for event names (landmarks)
                 TextButton(onClick = { isEventNameDropdownExpanded = !isEventNameDropdownExpanded }) {
-                    Text(ChooseEventName)
+                    Text(chooseEventName)
                 }
 
                 DropdownMenu(
                     expanded = isEventNameDropdownExpanded,
                     onDismissRequest = { isEventNameDropdownExpanded = false }
                 ) {
-                    eventsState.forEach { event ->
+                    if (eventsState.isEmpty()) {
                         DropdownMenuItem(
-                            onClick = {
-                                ChooseEventName = event.eventName
-                                isEventNameDropdownExpanded = false
-                            },
-                            text = { Text(event.eventName) }
+                            onClick = { /* Do nothing */ },
+                            text = { Text("No landmarks available") }
                         )
+                    } else {
+                        eventsState.forEach { event: Landmark ->
+                            DropdownMenuItem(
+                                onClick = {
+                                    chooseEventName = event.eventName
+                                    isEventNameDropdownExpanded = false
+                                },
+                                text = { Text(event.eventName) }
+                            )
+                        }
                     }
                 }
 
+                // Spacer
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // User Dropdown Menu
+                // Dropdown for users
                 TextButton(onClick = { isUserDropdownExpanded = !isUserDropdownExpanded }) {
-                    Text(ChooseUser?.let { "${it.fullName}" } ?: "Select User")
+                    Text(chooseUser?.let { "${it.fullName} " } ?: "Select User")
                 }
 
                 DropdownMenu(
@@ -123,7 +163,7 @@ fun LandmarkFilterDialog(
                     usersState.forEach { user ->
                         DropdownMenuItem(
                             onClick = {
-                                ChooseUser = user
+                                chooseUser = user
                                 isUserDropdownExpanded = false
                             },
                             text = { Text("${user.fullName}") }
@@ -131,9 +171,10 @@ fun LandmarkFilterDialog(
                     }
                 }
 
+                // Spacer
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Crowd Level Dropdown Menu
+                // Dropdown for crowd level
                 TextButton(onClick = { isCrowdLevelDropdownExpanded = !isCrowdLevelDropdownExpanded }) {
                     Text("Crowd Level: $selectedCrowdLevel")
                 }
@@ -148,7 +189,7 @@ fun LandmarkFilterDialog(
                                 selectedCrowdLevel = level
                                 isCrowdLevelDropdownExpanded = false
                             },
-                            text = { Text("Level $level") }
+                            text = { Text("$level") }
                         )
                     }
                 }
@@ -156,16 +197,12 @@ fun LandmarkFilterDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                if(ChooseUser!=null) {
-                    markerViewModel.filterMarkersByUserName(
-                        ChooseUser!!.fullName
-                    ){filteredMarkers ->}
-                }
-                else{
-                    markerViewModel.filterMarkers(
-                        Category,
-                        ChooseEventName,
-                        selectedCrowdLevel)
+                if (chooseUser != null) {
+                    markerViewModel.filterMarkersByUserName(chooseUser!!.fullName) { filteredMarkers ->
+                        // Handle filtered markers
+                    }
+                } else {
+                    markerViewModel.filterMarkers(category, chooseEventName, selectedCrowdLevel)
                 }
                 onDismiss()
             }) {

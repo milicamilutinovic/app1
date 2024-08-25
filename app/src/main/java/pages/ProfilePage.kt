@@ -30,9 +30,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.app1.AuthViewModel
+import com.example.app1.Landmark
+import com.example.app1.LandmarkRepositoryImpl
+import com.example.app1.LandmarkViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
@@ -49,6 +53,9 @@ fun UserProfilePage(
     var phoneNumber by remember { mutableStateOf<String?>(null) }
     var photoUrl by remember { mutableStateOf<String?>(null) }
 
+    val landmarkViewModel: LandmarkViewModel = viewModel()
+    var landmarks by remember { mutableStateOf<List<Landmark>>(emptyList()) } // List of user's events
+
     LaunchedEffect(userId) {
         userId?.let {
             val userDocument = FirebaseFirestore.getInstance().collection("users").document(it)
@@ -59,8 +66,13 @@ fun UserProfilePage(
                     photoUrl = document.getString("photoUrl")
                 }
             }
+
+            landmarkViewModel.filterLandmarksByUserId(it) { userLandmarks ->
+                landmarks = userLandmarks
+            }
         }
     }
+
 
     Column(
         modifier = modifier
@@ -139,6 +151,27 @@ fun UserProfilePage(
         }
 
         Spacer(modifier = Modifier.height(14.dp))
+        // Display user's events
+        Text(
+            text = "User's Landmarks:",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF2589a0)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        landmarks.forEach { event ->
+            Column(
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                Text(text = "Name: ${event.eventName}", fontSize = 20.sp, color = Color.Red)
+                Text(text = "Description: ${event.description}", fontSize = 16.sp, color = Color.Red)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
 
         Button(
             onClick = { navController.navigate("home") },
