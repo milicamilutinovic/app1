@@ -2,6 +2,8 @@ package com.example.app1
 
 
 import android.net.Uri
+import android.util.Log
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -20,12 +22,13 @@ class LandmarkViewModel: ViewModel() {
     private val _newRate = MutableStateFlow<Resource<String>?>(null)
     val newRate: StateFlow<Resource<String>?> = _newRate
 
-    private val _landmarks = MutableStateFlow<Resource<List<Landmark>>>(Resource.Success(emptyList()))
+    private val _landmarks =
+        MutableStateFlow<Resource<List<Landmark>>>(Resource.Success(emptyList()))
     val landmark: StateFlow<Resource<List<Landmark>>> get() = _landmarks
 
-//    private val _rates = MutableStateFlow<Resource<List<Rate>>>(Resource.Success(emptyList()))
+    //    private val _rates = MutableStateFlow<Resource<List<Rate>>>(Resource.Success(emptyList()))
 //    val rates: StateFlow<Resource<List<Rate>>> get() = _rates
-private val _landmarkDetail = MutableStateFlow<Resource<Landmark>?>(null)
+    private val _landmarkDetail = MutableStateFlow<Resource<Landmark>?>(null)
     val landmarkDetail: StateFlow<Resource<Landmark>?> = _landmarkDetail
 
     // Existing methods...
@@ -35,8 +38,10 @@ private val _landmarkDetail = MutableStateFlow<Resource<Landmark>?>(null)
         _landmarkDetail.value = repository.getLandmarkById(landmarkId)
     }
 
-    private val _userLandmarks = MutableStateFlow<Resource<List<Landmark>>>(Resource.Success(emptyList()))
+    private val _userLandmarks =
+        MutableStateFlow<Resource<List<Landmark>>>(Resource.Success(emptyList()))
     val userBeaches: StateFlow<Resource<List<Landmark>>> get() = _userLandmarks
+    private val _filteredLandmarks = MutableLiveData<Resource<List<Landmark>>>()
 
     init {
         getAllLandmarks()
@@ -54,7 +59,7 @@ private val _landmarkDetail = MutableStateFlow<Resource<Landmark>?>(null)
         mainImage: Uri,
         galleryImages: List<Uri>,
         location: LatLng?
-    ) = viewModelScope.launch{
+    ) = viewModelScope.launch {
         _landmarkFlow.value = Resource.loading
         repository.saveLandmarkData(
             description = description,
@@ -97,8 +102,32 @@ private val _landmarkDetail = MutableStateFlow<Resource<Landmark>?>(null)
     ) = viewModelScope.launch {
         _userLandmarks.value = repository.getUserLandmark(uid)
     }
-}
 
+    fun filterLandmarksByUserId(userId: String, onResult: (List<Landmark>) -> Unit) =
+        viewModelScope.launch {
+            // Dohvata sve događaje
+            val allEvents = when (val result = repository.getAllLandmark()) {
+                is Resource.Success -> result.result ?: emptyList()
+                else -> emptyList()
+            }
+
+            // Filtrira događaje koji odgovaraju `userId`
+            val filteredList = allEvents.filter { event: Landmark ->
+                Log.d(
+                    "LandmarkViewModel",
+                    "event.userId: ${event.userId}, userId: $userId"
+                ) // Logovanje
+
+                event.userId == userId
+            }
+
+            // Ažurira stanje sa filtriranim događajima
+            _filteredLandmarks.value = Resource.Success(filteredList)
+
+            // Vraćamo filtrirane događaje
+            onResult(filteredList)
+        }
+}
 class LandmarkViewModelFactory:ViewModelProvider.Factory{
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if(modelClass.isAssignableFrom(LandmarkViewModel::class.java)){

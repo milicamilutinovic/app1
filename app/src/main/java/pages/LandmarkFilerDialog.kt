@@ -1,6 +1,7 @@
 package pages
 
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -33,7 +34,7 @@ import com.google.gson.reflect.TypeToken
 fun LandmarkFilterDialog(
     onDismiss: () -> Unit,
     landmarkViewModel: LandmarkViewModel = viewModel(),
-    usersViewModel: UsersViewModel = viewModel() // Dodajemo ViewModel kao parametar
+    usersViewModel: UsersViewModel = viewModel()
 ) {
     var isCategoryDropdownExpanded by remember { mutableStateOf(false) }
     var isUserDropdownExpanded by remember { mutableStateOf(false) }
@@ -46,15 +47,14 @@ fun LandmarkFilterDialog(
 
     var Category by remember { mutableStateOf("Select Category") }
 
-    // Prikupite podatke o događajima
     val eventsResource by landmarkViewModel.landmark.collectAsState()
     val eventsState = when (eventsResource) {
-        is Resource.Success -> (eventsResource as Resource.Success<List<Landmark>>).result // Uzimamo listu događaja
-        is Resource.Failure -> emptyList() // Ili neka druga logika za greške
-        is Resource.loading -> emptyList() // U slučaju učitavanja
+        is Resource.Success -> (eventsResource as Resource.Success<List<Landmark>>).result
+        is Resource.Failure -> emptyList()
+        is Resource.loading -> emptyList()
     }
 
-    var markerViewModel:MarkerViewModel= viewModel()
+    val markerViewModel: MarkerViewModel = viewModel()
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -67,7 +67,7 @@ fun LandmarkFilterDialog(
         },
         text = {
             Column {
-                // Padajući meni za kategorije
+                // Category Dropdown Menu
                 TextButton(onClick = { isCategoryDropdownExpanded = !isCategoryDropdownExpanded }) {
                     Text(Category)
                 }
@@ -76,40 +76,20 @@ fun LandmarkFilterDialog(
                     expanded = isCategoryDropdownExpanded,
                     onDismissRequest = { isCategoryDropdownExpanded = false }
                 ) {
-                    DropdownMenuItem(
-                        onClick = {
-                            Category = "Crkva"
-                            isCategoryDropdownExpanded = false
-                        },
-                        text = { Text("Crkva") }
-                    )
-                    DropdownMenuItem(
-                        onClick = {
-                            Category = "Spomenik"
-                            isCategoryDropdownExpanded = false
-                        },
-                        text = { Text("Spomenik") }
-                    )
-                    DropdownMenuItem(
-                        onClick = {
-                            Category = "Park"
-                            isCategoryDropdownExpanded = false
-                        },
-                        text = { Text("Park") }
-                    )
-                    DropdownMenuItem(
-                        onClick = {
-                            Category = "Arheolosko nalaziste"
-                            isCategoryDropdownExpanded = false
-                        },
-                        text = { Text("Arheolosko nalaziste") }
-                    )
+                    listOf("Crkva", "Spomenik", "Park", "Arheolosko nalaziste").forEach { cat ->
+                        DropdownMenuItem(
+                            onClick = {
+                                Category = cat
+                                isCategoryDropdownExpanded = false
+                            },
+                            text = { Text(cat) }
+                        )
+                    }
                 }
 
-                // Spacer između menija
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Padajući meni za naziv događaja
+                // Event Name Dropdown Menu
                 TextButton(onClick = { isEventNameDropdownExpanded = !isEventNameDropdownExpanded }) {
                     Text(ChooseEventName)
                 }
@@ -121,17 +101,17 @@ fun LandmarkFilterDialog(
                     eventsState.forEach { event ->
                         DropdownMenuItem(
                             onClick = {
-                                ChooseEventName = event.eventName // Pretpostavljamo da event ima naziv
+                                ChooseEventName = event.eventName
                                 isEventNameDropdownExpanded = false
                             },
                             text = { Text(event.eventName) }
                         )
                     }
                 }
-                // Spacer između menija i dugmeta za odabir korisnika
+
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Padajući meni za korisnike
+                // User Dropdown Menu
                 TextButton(onClick = { isUserDropdownExpanded = !isUserDropdownExpanded }) {
                     Text(ChooseUser?.let { "${it.fullName}" } ?: "Select User")
                 }
@@ -151,12 +131,9 @@ fun LandmarkFilterDialog(
                     }
                 }
 
-                // Spacer između menija i dugmeta za odabir crowd levela
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Padajući meni za crowd level (1 do 5)
-
-
+                // Crowd Level Dropdown Menu
                 TextButton(onClick = { isCrowdLevelDropdownExpanded = !isCrowdLevelDropdownExpanded }) {
                     Text("Crowd Level: $selectedCrowdLevel")
                 }
@@ -179,8 +156,18 @@ fun LandmarkFilterDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                markerViewModel.filterMarkers(Category,ChooseEventName,selectedCrowdLevel)
-                onDismiss() // Zatvori dijalog nakon filtriranja
+                if(ChooseUser!=null) {
+                    markerViewModel.filterMarkersByUserName(
+                        ChooseUser!!.fullName
+                    ){filteredMarkers ->}
+                }
+                else{
+                    markerViewModel.filterMarkers(
+                        Category,
+                        ChooseEventName,
+                        selectedCrowdLevel)
+                }
+                onDismiss()
             }) {
                 Text("Filter")
             }
