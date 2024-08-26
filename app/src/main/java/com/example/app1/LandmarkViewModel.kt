@@ -53,7 +53,20 @@ class LandmarkViewModel: ViewModel() {
     }
 
     fun getAllLandmarks() = viewModelScope.launch {
-        _landmarks.value = repository.getAllLandmark()
+        _landmarks.value = repository.getAllLandmarks()
+        when (val result = _landmarks.value) {
+            is Resource.Success -> {
+                val landmarks = result.result
+                Log.d("LandmarkViewModel", "Landmarks loaded successfully: $landmarks")
+            }
+            is Resource.Failure -> {
+                val exception = result.exception
+                Log.e("LandmarkViewModel", "Failed to load landmarks", exception)
+            }
+            is Resource.loading -> {
+                Log.d("LandmarkViewModel", "Landmarks are loading")
+            }
+        }
     }
 //ovo se menja
 
@@ -133,7 +146,7 @@ class LandmarkViewModel: ViewModel() {
     fun filterLandmarksByUserId(userId: String, onResult: (List<Landmark>) -> Unit) =
         viewModelScope.launch {
             // Dohvata sve događaje
-            val allEvents = when (val result = repository.getAllLandmark()) {
+            val allEvents = when (val result = repository.getAllLandmarks()) {
                 is Resource.Success -> result.result ?: emptyList()
                 else -> emptyList()
             }

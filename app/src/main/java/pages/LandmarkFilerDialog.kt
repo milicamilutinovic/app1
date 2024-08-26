@@ -43,27 +43,13 @@ fun LandmarkFilterDialog(
     var selectedCrowdLevel by remember { mutableStateOf(0) }
     var category by remember { mutableStateOf("Select Category") }
 
-    val eventsResource by eventViewModel.landmark.collectAsState()
-
     // Inspecting eventsResource and creating eventsState
+    // Prikupite podatke o događajima
+    val eventsResource by eventViewModel.landmark.collectAsState()
     val eventsState = when (eventsResource) {
-        is Resource.Success -> {
-            val landmarks = (eventsResource as Resource.Success<List<Landmark>>).result
-            if (landmarks.isEmpty()) {
-                println("Debug: Landmarks list is empty")
-            } else {
-                println("Debug: Landmarks loaded successfully: $landmarks")
-            }
-            landmarks
-        }
-        is Resource.Failure -> {
-            println("Debug: Failed to load landmarks")
-            emptyList<Landmark>()
-        }
-        is Resource.loading -> {
-            println("Debug: Landmarks are loading")
-            emptyList<Landmark>()
-        }
+        is Resource.Success -> (eventsResource as Resource.Success<List<Landmark>>).result // Uzimamo listu događaja
+        is Resource.Failure -> emptyList() // Ili neka druga logika za greške
+        is Resource.loading -> emptyList() // U slučaju učitavanja
     }
 
     val markerViewModel: MarkerViewModel = viewModel()

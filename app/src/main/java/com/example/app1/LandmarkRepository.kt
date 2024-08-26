@@ -7,7 +7,7 @@ import com.google.rpc.context.AttributeContext
 
 interface LandmarkRepository {
 
-    suspend fun getAllLandmark(): Resource<List<Landmark>>
+    suspend fun getAllLandmarks(): Resource<List<Landmark>>
     suspend fun saveLandmarkData(
         description: String,
         crowd: Int,

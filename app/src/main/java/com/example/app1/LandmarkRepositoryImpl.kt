@@ -17,11 +17,12 @@ class LandmarkRepositoryImpl : LandmarkRepository {
     private val storageService = StorageService(storageInstance)
 
 
-    override suspend fun getAllLandmark(): Resource<List<Landmark>> {
+    override suspend fun getAllLandmarks(): Resource<List<Landmark>> {
         return try{
             val snapshot = firestoreInstance.collection("landmarks").get().await()
-            val beaches = snapshot.toObjects(Landmark::class.java)
-            Resource.Success(beaches)
+            val landmarks = snapshot.toObjects(Landmark::class.java)
+            Resource.Success(landmarks)
+
         }catch (e: Exception){
             e.printStackTrace()
             Resource.Failure(e)

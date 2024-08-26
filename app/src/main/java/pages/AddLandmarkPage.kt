@@ -56,7 +56,7 @@ fun AddLandmarkPage(navController: NavController) {
     val landmarkViewModel: LandmarkViewModel = viewModel()
     val landmarkTypes = listOf("Crkva", "Spomenik", "Park", "Arheolosko nalaziste")
     var selectedEventType by remember { mutableStateOf("") }
-    val eventName = remember { mutableStateOf(TextFieldValue("")) }
+    val EventName = remember { mutableStateOf(TextFieldValue("")) }
     val additionalDetails = remember { mutableStateOf(TextFieldValue("")) }
     val crowdLevel = remember { mutableStateOf(1) }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
@@ -129,8 +129,8 @@ fun AddLandmarkPage(navController: NavController) {
 
         // Event Name Input
         TextField(
-            value = eventName.value,
-            onValueChange = { eventName.value = it },
+            value = EventName.value,
+            onValueChange = { EventName.value = it },
             label = { Text("Landmark Name", color = Color.Red) },
             colors = TextFieldDefaults.colors(
                 focusedTextColor = Color.White,
@@ -210,7 +210,7 @@ fun AddLandmarkPage(navController: NavController) {
                 buttonIsLoading.value = true
                 landmarkViewModel?.saveLandmarkData(
                     eventType = selectedEventType,
-                    eventName = selectedEventType.toString(),
+                    eventName = EventName.value.text,
                     description = additionalDetails.value.text,
                     crowd = crowdLevel.value,
                     mainImage = imageUri!!,
@@ -220,7 +220,7 @@ fun AddLandmarkPage(navController: NavController) {
                 // Pass data back to HomePage
                 navController.previousBackStackEntry?.savedStateHandle?.set(
                     "newMarker",
-                    Pair(location.value!!, eventName.value.text)
+                    Pair(location.value!!, EventName.value.text)
                 )
                 navController.navigateUp() // Navigate back
             },
