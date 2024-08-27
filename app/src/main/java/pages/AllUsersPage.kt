@@ -1,5 +1,6 @@
 package pages
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +47,9 @@ fun UsersPage(
     val landmarkState = remember { mutableStateMapOf<String, List<Landmark>>() }
     val landmarkViewModel: LandmarkViewModel = viewModel()
 
+    // Sort users by points in descending order
+    val sortedUsers = usersState.value.sortedByDescending { it.points }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -65,20 +69,20 @@ fun UsersPage(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.weight(1f)
         ) {
-            items(usersState.value) { user ->
-                UserItem(user) { userId ->
-                    // Fetch events for the selected user
-                    landmarkViewModel.filterLandmarksByUserId(userId) { events ->
-                        landmarkState[userId] = events
-                    }
-                }
-
-                // Display the events associated with the user
-                landmarkState[user.id]?.let { events ->
-                    LandmarksList(events)
-                }
+            items(sortedUsers) { user ->
+                UserItem(
+                    user = user,
+                    isTopUser = sortedUsers.indexOf(user) < 3,
+                    onFetchEvents = { userId ->
+                        // Fetch events for the selected user
+                        landmarkViewModel.filterLandmarksByUserId(userId) { events ->
+                            landmarkState[userId] = events
+                        }
+                    },
+                    navController = navController
+                )
             }
-        }
+            }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -96,7 +100,12 @@ fun UsersPage(
 }
 
 @Composable
-fun UserItem(user: User, onFetchEvents: (String) -> Unit) {
+fun UserItem(
+    user: User,
+    isTopUser: Boolean,
+    onFetchEvents: (String) -> Unit,
+    navController: NavController
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -130,18 +139,34 @@ fun UserItem(user: User, onFetchEvents: (String) -> Unit) {
 
         Column {
             Text(
-                text = "${user.fullName} ",
+                text = "${user.fullName}",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Red
+                color = if (isTopUser) Color.Yellow else Color.Red
             )
             Text(
                 text = "Phone: ${user.phoneNumber}",
                 fontSize = 14.sp,
                 color = Color.White
             )
+            Text(
+                text = "Points: ${user.points}",
+                fontSize = 14.sp,
+                color = if (isTopUser) Color.Yellow else Color.White
+            )
             Button(onClick = { onFetchEvents(user.id) }) {
                 Text(text = "Show Events")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = {
+                val userId = user.id
+                if (userId != null) {
+                    navController.navigate("user_profile/$userId")
+                } else {
+                    Log.e("UserItem", "User ID is null")
+                }
+            }) {
+                Text(text = "Show Profile")
             }
         }
     }

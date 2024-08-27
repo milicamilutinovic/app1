@@ -49,6 +49,8 @@ fun HomePage(
     val homeViewModel: MarkerViewModel = viewModel(
         factory = HomeViewModelFactory(context)
     )
+    //CURRENTUSER
+    val currentUserId = (authState as? AuthState.Authenticated)?.let { authViewModel.getCurrentUser()?.uid }
 
     // Manage current location state
     val currentLocation = remember { mutableStateOf<LatLng?>(null) }
@@ -241,7 +243,7 @@ fun HomePage(
                         text = { Text("User Profile", color = Color.Black) },
                         onClick = {
                             expanded = false
-                            navController.navigate("user_profile")
+                            currentUserId?.let{navController.navigate("user_profile/${it}")}
                         }
                     )
                     DropdownMenuItem(

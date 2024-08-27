@@ -94,4 +94,5 @@ class LandmarkRepositoryImpl : LandmarkRepository {
             Resource.Failure(e)
         }
     }
+
 }

@@ -43,15 +43,13 @@ import com.google.firebase.firestore.FirebaseFirestore
 fun UserProfilePage(
     modifier: Modifier = Modifier,
     navController: NavController,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    userId: String?
 ) {
-    val authState by authViewModel.authState.observeAsState()
-    val user = authViewModel.getCurrentUser()
-    val userId = user?.uid
-
     var fullName by remember { mutableStateOf<String?>(null) }
     var phoneNumber by remember { mutableStateOf<String?>(null) }
     var photoUrl by remember { mutableStateOf<String?>(null) }
+    var points by remember { mutableStateOf<Int?>(null) }
 
     val landmarkViewModel: LandmarkViewModel = viewModel()
     var landmarks by remember { mutableStateOf<List<Landmark>>(emptyList()) } // List of user's events
@@ -64,6 +62,7 @@ fun UserProfilePage(
                     fullName = document.getString("fullName")
                     phoneNumber = document.getString("phoneNumber")
                     photoUrl = document.getString("photoUrl")
+                    points = document.getLong("points")?.toInt()
                 }
             }
 
@@ -72,7 +71,6 @@ fun UserProfilePage(
             }
         }
     }
-
 
     Column(
         modifier = modifier
@@ -101,10 +99,10 @@ fun UserProfilePage(
                 AsyncImage(
                     model = photoUrl,
                     contentDescription = "Profile Picture",
-                    contentScale = ContentScale.Crop, // Ensures the image fills the circle
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(150.dp)
-                        .clip(CircleShape) // Clips the image to a circular shape
+                        .clip(CircleShape)
                         .align(Alignment.Center)
                 )
             } else {
@@ -119,7 +117,7 @@ fun UserProfilePage(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Name: ${fullName ?: "Loading..."} ",
+            text = "Name: ${fullName ?: "Loading..."}",
             fontSize = 24.sp,
             color = Color.Red
         )
@@ -128,6 +126,14 @@ fun UserProfilePage(
 
         Text(
             text = "Phone: ${phoneNumber ?: "Loading..."}",
+            fontSize = 24.sp,
+            color = Color.Red
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Points: ${points ?: "Loading..."}",
             fontSize = 24.sp,
             color = Color.Red
         )
@@ -151,7 +157,7 @@ fun UserProfilePage(
         }
 
         Spacer(modifier = Modifier.height(14.dp))
-        // Display user's events
+
         Text(
             text = "User's Landmarks:",
             fontSize = 24.sp,

@@ -1,12 +1,14 @@
 package com.example.app1
 
 
+import RateRepositoryImpl
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.aquaspot.model.Rate
 import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.GeoPoint
@@ -19,7 +21,7 @@ import java.util.UUID
 
 class LandmarkViewModel: ViewModel() {
     val repository = LandmarkRepositoryImpl()
-    val rateRepository = LandmarkRepositoryImpl()
+    val rateRepository = RateRepositoryImpl()
 
     private val _landmarkFlow = MutableStateFlow<Resource<String>?>(null)
     val landmarkflow: StateFlow<Resource<String>?> = _landmarkFlow
@@ -31,8 +33,9 @@ class LandmarkViewModel: ViewModel() {
         MutableStateFlow<Resource<List<Landmark>>>(Resource.Success(emptyList()))
     val landmark: StateFlow<Resource<List<Landmark>>> get() = _landmarks
 
-    //    private val _rates = MutableStateFlow<Resource<List<Rate>>>(Resource.Success(emptyList()))
-//    val rates: StateFlow<Resource<List<Rate>>> get() = _rates
+    private val _rates = MutableStateFlow<Resource<List<Rate>>>(Resource.Success(emptyList()))
+    val rates: StateFlow<Resource<List<Rate>>> get() = _rates
+
     private val _landmarkDetail = MutableStateFlow<Resource<Landmark>?>(null)
     val landmarkDetail: StateFlow<Resource<Landmark>?> = _landmarkDetail
 
@@ -47,6 +50,13 @@ class LandmarkViewModel: ViewModel() {
         MutableStateFlow<Resource<List<Landmark>>>(Resource.Success(emptyList()))
     val userBeaches: StateFlow<Resource<List<Landmark>>> get() = _userLandmarks
     private val _filteredLandmarks = MutableLiveData<Resource<List<Landmark>>>()
+
+    private val _averageRate = MutableStateFlow<Resource<Double>?>(null)
+    val averageRate: StateFlow<Resource<Double>?> = _averageRate
+
+    fun recalculateAverageRate(landmarkId: String) = viewModelScope.launch {
+        _averageRate.value = rateRepository.recalculateAverageRate(landmarkId)
+    }
 
     init {
         getAllLandmarks()
@@ -112,30 +122,39 @@ class LandmarkViewModel: ViewModel() {
         }
     }
 
+    fun getEventDetail(eventId: String) = viewModelScope.launch {
+        _landmarkDetail.value = Resource.loading
+        _landmarkDetail.value = repository.getLandmarkById(eventId)
+
+        getLandmarkAllRates(eventId)
+
+    }
+
+    fun getLandmarkAllRates(
+        bid: String
+    ) = viewModelScope.launch {
+        _rates.value = Resource.loading
+        val result = rateRepository.getLandmarksRates(bid)
+        _rates.value = result
+    }
+
+    fun addRate(
+        bid: String,
+        rate: Int,
+        landmark: Landmark
+    ) = viewModelScope.launch {
+        _newRate.value = rateRepository.addRate(bid, rate, landmark)
+    }
+
+    fun updateRate(
+        rid: String,
+        rate: Int
+    ) = viewModelScope.launch {
+        _newRate.value = rateRepository.updateRate(rid, rate)
+      //  recalculateAverageRate(rid)
+    }
 
 
-//    fun getLandmarkAllRates(
-//        bid: String
-//    ) = viewModelScope.launch {
-//        _rates.value = Resource.loading
-//        val result = rateRepository.getLandmarkRates(bid)
-//        _rates.value = result
-//    }
-
-//    fun addRate(
-//        bid: String,
-//        rate: Int,
-//        landmark: Landmark
-//    ) = viewModelScope.launch {
-//        _newRate.value = rateRepository.addRate(bid, rate, landmark)
-//    }
-
-//    fun updateRate(
-//        rid: String,
-//        rate: Int
-//    ) = viewModelScope.launch{
-//        _newRate.value = rateRepository.updateRate(rid, rate)
-//    }
 
     fun getUserLandmark(
         uid: String

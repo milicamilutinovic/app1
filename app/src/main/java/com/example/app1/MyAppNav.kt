@@ -30,8 +30,9 @@ fun MyAppNavigation(modifier: Modifier = Modifier, authViewModel: AuthViewModel)
         composable("home") {
             HomePage(modifier, navController, authViewModel)
         }
-        composable("user_profile") {
-            UserProfilePage(modifier,navController,authViewModel)
+        composable("user_profile/{userId}") { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId")
+            UserProfilePage(modifier,navController,authViewModel, userId)
         }
         composable("all_users") {
             UsersPage(navController=navController)

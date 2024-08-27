@@ -23,4 +23,6 @@ interface LandmarkRepository {
     ): Resource<List<Landmark>>
 
     suspend fun getLandmarkById(id: String): Resource<Landmark>
+
+    //suspend fun  recalculateAverageRate(landmarkId: String)
 }

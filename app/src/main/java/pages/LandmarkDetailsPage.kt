@@ -1,18 +1,25 @@
 package pages
 
+import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,36 +31,66 @@ import com.example.app1.LandmarkViewModelFactory
 import com.example.app1.Marker
 import com.google.gson.Gson
 
-import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.app1.AuthViewModel
+import com.example.app1.Landmark
+import com.example.app1.RateLandmarkDialog
+import com.example.app1.Resource
 import com.example.app1.UsersViewModel
+import com.example.aquaspot.model.Rate
+import java.math.RoundingMode
 
 @Composable
 fun LandmarkDetailsPage(
     navController: NavController,
     landmarkViewModel: LandmarkViewModel = viewModel(factory = LandmarkViewModelFactory())
 ) {
-    // Retrieve JSON string from the previous screen
+    val viewModel: AuthViewModel = viewModel()
+
     val markerDataJson = navController.previousBackStackEntry
         ?.savedStateHandle
         ?.get<String>("markerData")
 
-    // Parse JSON string to MarkerData object
     val markerData = Gson().fromJson(markerDataJson, Marker::class.java)
+    val landmark: Landmark = markerData?.let {
+        Landmark(
+            id = it.id,
+            userId = it.userId,
+            eventName = it.eventName,
+            eventType = it.eventType,
+            description = it.description,
+            crowd = it.crowd,
+            mainImage = it.mainImage,
+            galleryImages = it.galleryImages,
+            location = it.location
+        )
+    } ?: Landmark()
 
-    // Handle the state of the landmark details
-    val landmark by landmarkViewModel.landmark.collectAsState()
-    val  usersViewModel: UsersViewModel = viewModel() // Inicijalizacija UsersViewModel
-
+    val usersViewModel: UsersViewModel = viewModel()
     var userName by remember { mutableStateOf("") }
 
-            markerData?.userId?.let { userId ->
-                usersViewModel.users.collectAsState().value.find { user -> user.id == userId }
-                    ?.let { user ->
-                        userName = "${user.fullName}"
-                    }
+    markerData?.userId?.let { userId ->
+        usersViewModel.users.collectAsState().value.find { user -> user.id == userId }
+            ?.let { user ->
+                userName = user.fullName
             }
+    }
 
+    val ratesResources = landmarkViewModel.rates.collectAsState()
+    val newRateResource = landmarkViewModel.newRate.collectAsState()
+
+
+    val rates = remember { mutableStateListOf<Rate>() }
+    val averageRate = remember { mutableStateOf(0.0) }
+    val isLoading = remember { mutableStateOf(false) }
+    val showRateDialog = remember { mutableStateOf(false) }
+    val myPrice = remember { mutableStateOf(0) }
+
+    LaunchedEffect(landmark.id) {
+        if (landmark.id.isNotEmpty()) {
+            landmarkViewModel.getEventDetail(landmark.id)  // Poziv funkcije
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -72,7 +109,6 @@ fun LandmarkDetailsPage(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Display the details of the marker
         markerData?.let {
             Text(
                 text = it.eventName,
@@ -83,10 +119,13 @@ fun LandmarkDetailsPage(
             )
 
             Text(
-                text = "User: ${userName}",
+                text = "User: $userName",
                 color = Color.White,
                 fontSize = 16.sp
             )
+
+            Spacer(modifier = Modifier.height(10.dp))
+            CustomLandmarkRate(average = averageRate.value)
 
             Text(
                 text = "Event Name: ${it.eventName}",
@@ -112,7 +151,6 @@ fun LandmarkDetailsPage(
                 fontSize = 16.sp
             )
 
-            // Display main image if available
             if (it.mainImage.isNotEmpty()) {
                 Log.d("ImageLoad", "Loading image from URL: ${it.mainImage}")
 
@@ -130,7 +168,6 @@ fun LandmarkDetailsPage(
                 )
             }
 
-            // Display gallery images if available
             if (it.galleryImages.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -172,5 +209,171 @@ fun LandmarkDetailsPage(
                 fontSize = 16.sp
             )
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        CustomRateButton(
+            enabled = landmark.userId != viewModel.getCurrentUser()?.uid,
+            onClick = {
+                val rateExist = rates.firstOrNull {
+                    it.landmarkId == landmark.id && it.userId == viewModel.getCurrentUser()!!.uid
+                }
+                if (rateExist != null) {
+                    myPrice.value = rateExist.rate
+                }
+                showRateDialog.value = true
+            }
+        )
+
+        if (showRateDialog.value) {
+            RateLandmarkDialog(
+                showRateDialog = showRateDialog,
+                rate = myPrice,
+                rateBeach = {
+                    val rateExist = rates.firstOrNull {
+                        it.landmarkId == landmark.id && it.userId == viewModel.getCurrentUser()!!.uid
+                    }
+                    if (rateExist != null) {
+                        isLoading.value = true
+                        landmarkViewModel.updateRate(
+                            rid = rateExist.id,
+                            rate = myPrice.value
+                        )
+                    } else {
+                        isLoading.value = true
+                        landmarkViewModel.addRate(
+                            bid = landmark.id,
+                            rate = myPrice.value,
+                            landmark = landmark
+                        )
+                    }
+                },
+                isLoading = isLoading
+            )
+        }
     }
+    ratesResources.value.let { resource ->
+        when (resource) {
+            is Resource.Success -> {
+                Log.d("DataFetch", "Rates fetched successfully: ${resource.result}")
+                rates.clear()  // Clear existing rates
+                rates.addAll(resource.result)
+                val sum = rates.sumOf { it.rate.toDouble() }
+                if (sum != 0.0) {
+                    val rawAverage = sum / rates.size
+                    averageRate.value = rawAverage.toBigDecimal().setScale(1, RoundingMode.UP).toDouble()
+                } else {
+                    Log.e("DataError", "No rates available for calculation")
+                }
+            }
+
+            is Resource.loading -> {
+                // Handle loading state if needed
+            }
+
+            is Resource.Failure -> {
+                Log.e("DataError", "Failed to fetch rates: ${resource.exception}")
+            }
+        }
+    }
+
+
+    newRateResource.value.let { resource ->
+        when (resource) {
+            is Resource.Success -> {
+                isLoading.value = false
+                val existingRate = rates.firstOrNull { it.id == resource.result }
+                if (existingRate != null) {
+                    existingRate.rate = myPrice.value
+                } else {
+                    rates.add(
+                        Rate(
+                            id = resource.result,
+                            rate = myPrice.value,
+                            landmarkId = landmark.id,
+                            userId = viewModel.getCurrentUser()!!.uid
+                        )
+                    )
+                }
+                // Recalculate the average rate
+                val sum = rates.sumOf { it.rate.toDouble() }
+                averageRate.value = sum / rates.size
+                Log.d("Rates", "Rates: $rates")
+                Log.d("AverageCalculation", "Sum: $sum, Size: ${rates.size}, Average: ${averageRate.value}")
+
+            }
+
+            is Resource.loading -> {
+                // Handle loading state
+            }
+
+            is Resource.Failure -> {
+                val context = LocalContext.current
+                Toast.makeText(context, "Error rating the landmark", Toast.LENGTH_LONG).show()
+                isLoading.value = false
+            }
+
+            null -> {
+                isLoading.value = false
+            }
+        }
+    }
+}
+
+
+    @Composable
+fun CustomRateButton(
+    onClick: () -> Unit,
+    enabled: Boolean
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp)
+            .background(Color(0xFF6200EA), RoundedCornerShape(30.dp)),
+        enabled = enabled,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF6200EA),
+            contentColor = Color.Black,
+            disabledContainerColor = Color(0xFFD3D3D3),
+            disabledContentColor = Color.White
+        ),
+    ) {
+        Text(
+            "Rate landmark",
+            style = TextStyle(
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        )
+    }
+}
+
+@Composable
+fun CustomLandmarkRate(
+    average: Number
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Star,
+            contentDescription = "",
+            tint = Color.Yellow
+        )
+        Spacer(modifier = Modifier.width(5.dp))
+        inputTextIndicator(textValue = "$average / 5")
+    }
+}
+
+@Composable
+fun inputTextIndicator(textValue: String) {
+    Text(
+        style = TextStyle(
+            color = Color.Red,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium
+        ),
+        text = textValue
+    )
 }
