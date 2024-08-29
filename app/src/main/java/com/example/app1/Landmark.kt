@@ -3,6 +3,7 @@ package com.example.app1
 
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.GeoPoint
+import java.io.Serializable
 
 data class Landmark(
     @DocumentId val id: String = "",
@@ -14,7 +15,8 @@ data class Landmark(
     val mainImage: String? = null, // Nullable, as the image might not be selected
     val galleryImages: List<String> = emptyList(),
     val location: GeoPoint = GeoPoint(0.0, 0.0)
-){
+    //dodala Seriazable za prikaz landmarka
+):Serializable{
     constructor() : this(
         id = "",
         userId = "",

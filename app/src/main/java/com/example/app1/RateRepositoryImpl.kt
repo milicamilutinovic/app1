@@ -21,8 +21,8 @@ class RateRepositoryImpl : RateRepository {
             val querySnapshot = rateDocRef.get().await()
             val ratesList = mutableListOf<Rate>()
             for (document in querySnapshot.documents) {
-                val beachId = document.getString("landmarkId") ?: ""
-                if (beachId == lid) {
+                val landmarkId = document.getString("landmarkId") ?: ""
+                if (landmarkId == lid) {
                     ratesList.add(
                         Rate(
                             id = document.id,

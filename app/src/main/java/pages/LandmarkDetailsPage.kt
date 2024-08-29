@@ -43,8 +43,11 @@ import java.math.RoundingMode
 @Composable
 fun LandmarkDetailsPage(
     navController: NavController,
-    landmarkViewModel: LandmarkViewModel = viewModel(factory = LandmarkViewModelFactory())
+    landmarkId: String
 ) {
+    val landmarkViewModel: LandmarkViewModel = viewModel(factory = LandmarkViewModelFactory())
+    val landmarkResource by landmarkViewModel.landmarkDetail.collectAsState()
+    val ratesResource by landmarkViewModel.rates.collectAsState()
     val viewModel: AuthViewModel = viewModel()
 
     val markerDataJson = navController.previousBackStackEntry
@@ -52,19 +55,6 @@ fun LandmarkDetailsPage(
         ?.get<String>("markerData")
 
     val markerData = Gson().fromJson(markerDataJson, Marker::class.java)
-    val landmark: Landmark = markerData?.let {
-        Landmark(
-            id = it.id,
-            userId = it.userId,
-            eventName = it.eventName,
-            eventType = it.eventType,
-            description = it.description,
-            crowd = it.crowd,
-            mainImage = it.mainImage,
-            galleryImages = it.galleryImages,
-            location = it.location
-        )
-    } ?: Landmark()
 
     val usersViewModel: UsersViewModel = viewModel()
     var userName by remember { mutableStateOf("") }
@@ -76,21 +66,18 @@ fun LandmarkDetailsPage(
             }
     }
 
-    val ratesResources = landmarkViewModel.rates.collectAsState()
-    val newRateResource = landmarkViewModel.newRate.collectAsState()
-
-
     val rates = remember { mutableStateListOf<Rate>() }
     val averageRate = remember { mutableStateOf(0.0) }
     val isLoading = remember { mutableStateOf(false) }
     val showRateDialog = remember { mutableStateOf(false) }
     val myPrice = remember { mutableStateOf(0) }
 
-    LaunchedEffect(landmark.id) {
-        if (landmark.id.isNotEmpty()) {
-            landmarkViewModel.getEventDetail(landmark.id)  // Poziv funkcije
-        }
+    LaunchedEffect(landmarkId) {
+        landmarkViewModel.getEventDetail(landmarkId)
     }
+
+    val landmark = (landmarkResource as? Resource.Success)?.result
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -109,7 +96,7 @@ fun LandmarkDetailsPage(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        markerData?.let {
+        landmark?.let {
             Text(
                 text = it.eventName,
                 fontSize = 24.sp,
@@ -151,7 +138,7 @@ fun LandmarkDetailsPage(
                 fontSize = 16.sp
             )
 
-            if (it.mainImage.isNotEmpty()) {
+            if (it.mainImage?.isNotEmpty() == true) {
                 Log.d("ImageLoad", "Loading image from URL: ${it.mainImage}")
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -212,10 +199,10 @@ fun LandmarkDetailsPage(
 
         Spacer(modifier = Modifier.height(16.dp))
         CustomRateButton(
-            enabled = landmark.userId != viewModel.getCurrentUser()?.uid,
+            enabled = landmark?.userId != viewModel.getCurrentUser()?.uid,
             onClick = {
                 val rateExist = rates.firstOrNull {
-                    it.landmarkId == landmark.id && it.userId == viewModel.getCurrentUser()!!.uid
+                    it.landmarkId == landmark?.id && it.userId == viewModel.getCurrentUser()?.uid
                 }
                 if (rateExist != null) {
                     myPrice.value = rateExist.rate
@@ -230,7 +217,7 @@ fun LandmarkDetailsPage(
                 rate = myPrice,
                 rateBeach = {
                     val rateExist = rates.firstOrNull {
-                        it.landmarkId == landmark.id && it.userId == viewModel.getCurrentUser()!!.uid
+                        it.landmarkId == landmark?.id && it.userId == viewModel.getCurrentUser()?.uid
                     }
                     if (rateExist != null) {
                         isLoading.value = true
@@ -241,9 +228,9 @@ fun LandmarkDetailsPage(
                     } else {
                         isLoading.value = true
                         landmarkViewModel.addRate(
-                            bid = landmark.id,
+                            bid = landmark?.id ?: "",
                             rate = myPrice.value,
-                            landmark = landmark
+                            landmark = landmark!!
                         )
                     }
                 },
@@ -251,18 +238,19 @@ fun LandmarkDetailsPage(
             )
         }
     }
-    ratesResources.value.let { resource ->
+
+    ratesResource.let { resource ->
         when (resource) {
             is Resource.Success -> {
                 Log.d("DataFetch", "Rates fetched successfully: ${resource.result}")
                 rates.clear()  // Clear existing rates
                 rates.addAll(resource.result)
                 val sum = rates.sumOf { it.rate.toDouble() }
-                if (sum != 0.0) {
+                averageRate.value = if (rates.isNotEmpty()) {
                     val rawAverage = sum / rates.size
-                    averageRate.value = rawAverage.toBigDecimal().setScale(1, RoundingMode.UP).toDouble()
+                    rawAverage.toBigDecimal().setScale(1, RoundingMode.UP).toDouble()
                 } else {
-                    Log.e("DataError", "No rates available for calculation")
+                    0.0
                 }
             }
 
@@ -276,8 +264,7 @@ fun LandmarkDetailsPage(
         }
     }
 
-
-    newRateResource.value.let { resource ->
+    landmarkViewModel.newRate.collectAsState().value.let { resource ->
         when (resource) {
             is Resource.Success -> {
                 isLoading.value = false
@@ -289,14 +276,18 @@ fun LandmarkDetailsPage(
                         Rate(
                             id = resource.result,
                             rate = myPrice.value,
-                            landmarkId = landmark.id,
-                            userId = viewModel.getCurrentUser()!!.uid
+                            landmarkId = landmark?.id ?: "",
+                            userId = viewModel.getCurrentUser()?.uid ?: ""
                         )
                     )
                 }
                 // Recalculate the average rate
                 val sum = rates.sumOf { it.rate.toDouble() }
-                averageRate.value = sum / rates.size
+                averageRate.value = if (rates.isNotEmpty()) {
+                    sum / rates.size
+                } else {
+                    0.0
+                }
                 Log.d("Rates", "Rates: $rates")
                 Log.d("AverageCalculation", "Sum: $sum, Size: ${rates.size}, Average: ${averageRate.value}")
 
@@ -318,6 +309,7 @@ fun LandmarkDetailsPage(
         }
     }
 }
+
 
 
     @Composable

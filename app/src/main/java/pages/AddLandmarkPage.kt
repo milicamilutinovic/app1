@@ -50,6 +50,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.app1.LandmarkViewModel
 import com.example.app1.Resource
 import com.google.android.gms.maps.model.LatLng
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 
 @Composable
 fun AddLandmarkPage(navController: NavController) {
@@ -64,6 +66,10 @@ fun AddLandmarkPage(navController: NavController) {
     val showedAlert = remember { mutableStateOf(false) }
     val eventFlow = landmarkViewModel?.landmarkflow?.collectAsState(initial = null)?.value
     var galleryImages by remember { mutableStateOf<List<Uri>>(emptyList()) }
+
+    //da pamti §id tr korisnika
+    val currentUser = Firebase.auth.currentUser
+    val userId = currentUser?.uid ?: "unknown"
 
     // Photo picker launcher
     val launcher = rememberLauncherForActivityResult(
@@ -209,6 +215,7 @@ fun AddLandmarkPage(navController: NavController) {
                 showedAlert.value = false
                 buttonIsLoading.value = true
                 landmarkViewModel?.saveLandmarkData(
+                    userId = userId,
                     eventType = selectedEventType,
                     eventName = EventName.value.text,
                     description = additionalDetails.value.text,

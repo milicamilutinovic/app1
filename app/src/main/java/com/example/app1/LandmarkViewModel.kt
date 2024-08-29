@@ -44,6 +44,7 @@ class LandmarkViewModel: ViewModel() {
     fun getLandmarkDetail(landmarkId: String) = viewModelScope.launch {
         _landmarkDetail.value = Resource.loading
         _landmarkDetail.value = repository.getLandmarkById(landmarkId)
+        getLandmarkAllRates(landmarkId)
     }
 
     private val _userLandmarks =
@@ -81,6 +82,7 @@ class LandmarkViewModel: ViewModel() {
 //ovo se menja
 
     fun saveLandmarkData(
+        userId: String,
         eventType: String,
         eventName: String,
         description: String,
@@ -95,6 +97,7 @@ class LandmarkViewModel: ViewModel() {
         uploadTask.addOnSuccessListener {
             storageRef.downloadUrl.addOnSuccessListener { uri ->
                 val landmarkData = hashMapOf(
+                    "userId" to userId,
                     "eventType" to eventType,
                     "eventName" to eventName,
                     "description" to description,
@@ -186,6 +189,17 @@ class LandmarkViewModel: ViewModel() {
             // Vraćamo filtrirane događaje
             onResult(filteredList)
         }
+
+    private val _selectedLandmark = MutableStateFlow<Landmark?>(null)
+    val selectedLandmark: StateFlow<Landmark?> get() = _selectedLandmark
+
+    // Funkcija za postavljanje izabranog događaja
+    fun setSelectedLandmark(landmark: Landmark) {
+        _selectedLandmark.value = landmark
+    }
+
+
+
 }
 class LandmarkViewModelFactory:ViewModelProvider.Factory{
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

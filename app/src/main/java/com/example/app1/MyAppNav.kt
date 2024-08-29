@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import pages.AddLandmarkPage
+import pages.AllLandmarksPage
 import pages.HomePage
 import pages.LandmarkDetailsPage
 import pages.LocationServicePage
@@ -43,8 +44,27 @@ fun MyAppNavigation(modifier: Modifier = Modifier, authViewModel: AuthViewModel)
         composable("add_landmark") {
             AddLandmarkPage(navController = navController)
         }
-        composable("LandmarkDetailsPage") {
-            LandmarkDetailsPage(navController = navController)
+//        composable("LandmarkDetailsPage") {
+//            LandmarkDetailsPage(navController = navController)
+//        }
+        composable("allLandmarks"){
+            AllLandmarksPage(navController =navController )
         }
+        composable("landmark_details/{landmarkId}") { backStackEntry ->
+            val landmarkId = backStackEntry.arguments?.getString("landmarkId")
+            if (landmarkId != null) {
+                LandmarkDetailsPage(landmarkId = landmarkId, navController = navController)
+            }
+        }
+//        composable("landmark_detail/{landmarkId}") { backStackEntry ->
+//            val landmarkId = backStackEntry.arguments?.getString("landmarkId")
+//            if (landmarkId != null) {
+//                LandmarkDetailsPage(navController,landmarkId)
+//            }
+//        }
+//        composable("map_with_landmark/{id}") { backStackEntry ->
+//            val landmarkId = backStackEntry.arguments?.getString("id") ?: return@composable
+//            HomePage(navController = navController,landmarkId = landmarkId, )
+//        }
     })
 }
