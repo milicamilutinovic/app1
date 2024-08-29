@@ -1,4 +1,4 @@
-package com.example.aquaspot.model
+package com.example.app1.data
 
 import com.google.firebase.firestore.DocumentId
 

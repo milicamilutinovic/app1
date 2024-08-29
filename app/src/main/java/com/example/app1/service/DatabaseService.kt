@@ -1,11 +1,11 @@
-package com.example.app1
+package com.example.app1.service
 
 
 
-import com.example.aquaspot.model.Rate
-import com.google.android.gms.tasks.Task
+import com.example.app1.data.Landmark
+import com.example.app1.data.Resource
+import com.example.app1.data.Rate
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.toObject
 import kotlinx.coroutines.tasks.await
 
 data class CustomUser(
@@ -20,7 +20,7 @@ class DatabaseService(
     suspend fun saveUserData(
         uid: String,
         user: CustomUser
-    ): Resource<String>{
+    ): Resource<String> {
         return try {
             firestore.collection("users").document(uid).set(user).await()
             Resource.Success("Uspešno dodati podaci o korisniku")
@@ -33,7 +33,7 @@ class DatabaseService(
     suspend fun addPoints(
         uid: String,
         points: Int
-    ): Resource<String>{
+    ): Resource<String> {
         return try {
             val userDocRef = firestore.collection("users").document(uid)
             val userSnapshot = userDocRef.get().await()
@@ -59,7 +59,7 @@ class DatabaseService(
 
     suspend fun getUserData(
         uid: String
-    ):Resource<String>{
+    ): Resource<String> {
         return try {
             val userDocRef = firestore.collection("users").document(uid)
             val userSnapshot = userDocRef.get().await()
@@ -84,7 +84,7 @@ class DatabaseService(
 
     suspend fun saveLandmarkData(
         landmark: Landmark
-    ): Resource<String>{
+    ): Resource<String> {
         return try{
             firestore.collection("landmarks").add(landmark).await()
             Resource.Success("Uspešno sačuvani podaci o zamenitosti")
@@ -96,7 +96,7 @@ class DatabaseService(
 
     suspend fun saveRateData(
         rate: Rate
-    ): Resource<String>{
+    ): Resource<String> {
         return try{
             val result = firestore.collection("rates").add(rate).await()
             Resource.Success(result.id)
@@ -109,7 +109,7 @@ class DatabaseService(
     suspend fun updateRate(
         rid: String,
         rate: Int
-    ): Resource<String>{
+    ): Resource<String> {
         return try{
             val documentRef = firestore.collection("rates").document(rid)
             documentRef.update("rate", rate).await()

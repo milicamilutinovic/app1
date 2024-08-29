@@ -1,8 +1,4 @@
-
-import android.util.Log
-import com.example.app1.Landmark
-import com.example.app1.Resource
-import com.example.aquaspot.model.Rate
+package com.example.app1.data
 
 interface RateRepository {
     suspend fun getLandmarksRates(

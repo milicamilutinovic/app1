@@ -1,4 +1,4 @@
-package com.example.app1
+package com.example.app1.location
 
 import android.Manifest
 import android.content.Context

@@ -1,9 +1,7 @@
-package com.example.app1
+package com.example.app1.data
 
 import android.net.Uri
 import com.google.android.gms.maps.model.LatLng
-import com.google.firebase.firestore.GeoPoint
-import com.google.rpc.context.AttributeContext
 
 interface LandmarkRepository {
 

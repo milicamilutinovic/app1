@@ -1,4 +1,4 @@
-package com.example.app1
+package com.example.app1.location
 
 import android.content.BroadcastReceiver
 import android.content.Context

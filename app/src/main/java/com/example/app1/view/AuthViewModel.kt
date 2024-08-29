@@ -1,4 +1,4 @@
-package com.example.app1
+package com.example.app1.view
 
 import android.net.Uri
 import android.util.Log
@@ -41,7 +41,8 @@ class AuthViewModel : ViewModel() {
                 if (task.isSuccessful) {
                     _authState.value = AuthState.Authenticated
                 } else {
-                    _authState.value = AuthState.Error(task.exception?.message ?: "Something went wrong")
+                    _authState.value =
+                        AuthState.Error(task.exception?.message ?: "Something went wrong")
                 }
             }
     }
@@ -82,7 +83,8 @@ class AuthViewModel : ViewModel() {
 
                 } else {
                     Log.e("AuthViewModel", "Signup failed", task.exception)
-                    _authState.value = AuthState.Error(task.exception?.message ?: "Something went wrong")
+                    _authState.value =
+                        AuthState.Error(task.exception?.message ?: "Something went wrong")
                 }
             }
     }

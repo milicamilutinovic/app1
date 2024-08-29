@@ -1,14 +1,17 @@
-package com.example.app1
+package com.example.app1.view
 
 
-import RateRepositoryImpl
+import com.example.app1.data.RateRepositoryImpl
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.aquaspot.model.Rate
+import com.example.app1.data.Landmark
+import com.example.app1.data.LandmarkRepositoryImpl
+import com.example.app1.data.Resource
+import com.example.app1.data.Rate
 import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.GeoPoint

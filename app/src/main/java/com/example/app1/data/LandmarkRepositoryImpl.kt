@@ -1,6 +1,8 @@
-package com.example.app1
+package com.example.app1.data
 
 import android.net.Uri
+import com.example.app1.service.DatabaseService
+import com.example.app1.service.StorageService
 import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore

@@ -19,12 +19,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.app1.Landmark
-import com.example.app1.LandmarkViewModel
-import com.example.app1.MarkerViewModel
-import com.example.app1.Resource
-import com.example.app1.User
-import com.example.app1.UsersViewModel
+import com.example.app1.data.Landmark
+import com.example.app1.view.LandmarkViewModel
+import com.example.app1.view.MarkerViewModel
+import com.example.app1.data.Resource
+import com.example.app1.view.User
+import com.example.app1.view.UsersViewModel
 
 
 @Composable

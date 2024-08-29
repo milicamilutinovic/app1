@@ -18,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,10 +32,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.app1.AuthViewModel
-import com.example.app1.Landmark
-import com.example.app1.LandmarkRepositoryImpl
-import com.example.app1.LandmarkViewModel
+import com.example.app1.view.AuthViewModel
+import com.example.app1.data.Landmark
+import com.example.app1.view.LandmarkViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable

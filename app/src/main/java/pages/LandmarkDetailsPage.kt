@@ -1,6 +1,5 @@
 package pages
 
-import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -26,18 +25,16 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.app1.LandmarkViewModel
-import com.example.app1.LandmarkViewModelFactory
-import com.example.app1.Marker
+import com.example.app1.view.LandmarkViewModel
+import com.example.app1.view.LandmarkViewModelFactory
+import com.example.app1.view.Marker
 import com.google.gson.Gson
 
 import coil.request.ImageRequest
-import com.example.app1.AuthViewModel
-import com.example.app1.Landmark
-import com.example.app1.RateLandmarkDialog
-import com.example.app1.Resource
-import com.example.app1.UsersViewModel
-import com.example.aquaspot.model.Rate
+import com.example.app1.view.AuthViewModel
+import com.example.app1.data.Resource
+import com.example.app1.view.UsersViewModel
+import com.example.app1.data.Rate
 import java.math.RoundingMode
 
 @Composable

@@ -1,11 +1,14 @@
-package com.example.app1
+package com.example.app1.nav
 
 //import AddLandmarkPage
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.app1.view.AuthViewModel
 import pages.AddLandmarkPage
 import pages.AllLandmarksPage
 import pages.HomePage
@@ -17,6 +20,7 @@ import pages.UserProfilePage
 
 import pages.UsersPage
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MyAppNavigation(modifier: Modifier = Modifier, authViewModel: AuthViewModel) {
     val navController = rememberNavController()
@@ -39,7 +43,7 @@ fun MyAppNavigation(modifier: Modifier = Modifier, authViewModel: AuthViewModel)
             UsersPage(navController=navController)
         }
         composable("settings") {
-            LocationServicePage(navController=navController)
+            LocationServicePage(modifier,navController)
         }
         composable("add_landmark") {
             AddLandmarkPage(navController = navController)

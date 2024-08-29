@@ -1,4 +1,4 @@
-package com.example.app1
+package com.example.app1.location
 
 import android.location.Location
 import kotlinx.coroutines.flow.Flow

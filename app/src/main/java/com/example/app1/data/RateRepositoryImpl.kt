@@ -1,9 +1,6 @@
-
+package com.example.app1.data
 import android.util.Log
-import com.example.app1.DatabaseService
-import com.example.app1.Landmark
-import com.example.app1.Resource
-import com.example.aquaspot.model.Rate
+import com.example.app1.service.DatabaseService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -49,12 +46,14 @@ class RateRepositoryImpl : RateRepository {
             for(document in querySnapshot.documents){
                 val userId = document.getString("userId") ?: ""
                 if(userId == firebaseAuth.currentUser?.uid){
-                    ratesList.add(Rate(
+                    ratesList.add(
+                        Rate(
                         id = document.id,
                         landmarkId = document.getString("landmarkId") ?: "",
                         userId = userId,
                         rate = document.getLong("rate")?.toInt() ?: 0
-                    ))
+                    )
+                    )
                 }
             }
             Resource.Success(ratesList)
@@ -111,7 +110,7 @@ class RateRepositoryImpl : RateRepository {
                     Resource.Success(average)
                 }
                 is Resource.Failure -> {
-                    Log.e("RateRepositoryImpl", "Failed to recalculate average rate: ${result.exception}")
+                    Log.e("com.example.app1.data.RateRepositoryImpl", "Failed to recalculate average rate: ${result.exception}")
                     Resource.Failure(result.exception)
                 }
 

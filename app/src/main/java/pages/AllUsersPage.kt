@@ -33,10 +33,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.app1.Landmark
-import com.example.app1.LandmarkViewModel
-import com.example.app1.User
-import com.example.app1.UsersViewModel
+import com.example.app1.data.Landmark
+import com.example.app1.view.LandmarkViewModel
+import com.example.app1.view.User
+import com.example.app1.view.UsersViewModel
 
 @Composable
 fun UsersPage(

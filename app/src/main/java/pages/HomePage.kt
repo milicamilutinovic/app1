@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -34,9 +33,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.rememberImagePainter
-import com.example.app1.AuthState
-import com.example.app1.AuthViewModel
-import com.example.app1.Landmark
+import com.example.app1.view.AuthState
+import com.example.app1.view.AuthViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -48,8 +46,7 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.gson.Gson
 import com.google.android.gms.maps.model.MapStyleOptions
-import com.example.app1.MarkerViewModel
-import com.google.android.gms.maps.CameraUpdateFactory
+import com.example.app1.view.MarkerViewModel
 
 @Composable
 fun HomePage(
@@ -175,7 +172,6 @@ fun HomePage(
 //    }
 
 
-
     LaunchedEffect(currentLocation.value) {
         currentLocation.value?.let { location ->
             // Only update camera position if it's different from the current one
@@ -184,8 +180,6 @@ fun HomePage(
             }
         }
     }
-
-
 
 
 //    if (showDialog) {
@@ -229,7 +223,8 @@ fun HomePage(
                 CameraPosition.fromLatLngZoom(currentLocation.value!!, 15f)
             searchQuery.value = TextFieldValue("")
             keyboardController?.hide()
-            focusLocation = LatLng(it.location.latitude, it.location.longitude) // Set the focus location
+            focusLocation =
+                LatLng(it.location.latitude, it.location.longitude) // Set the focus location
             shouldFocusOnLandmark = true
         }
     }
@@ -415,7 +410,7 @@ fun HomePage(
                                         "markerData",
                                         markerJson
                                     )
-                                    navController.navigate("LandmarkDetailsPage")
+                                    navController.navigate("landmark_details/${it.id}")
                                 }
                             },
                         verticalAlignment = Alignment.CenterVertically
@@ -518,38 +513,6 @@ fun HomePage(
                 }
             }
         }
-    }
-    @Composable
-    fun MarkerNameDialog(
-        markerName: MutableState<TextFieldValue>,
-        onDismiss: () -> Unit,
-        onConfirm: () -> Unit
-    ) {
-        AlertDialog(
-            onDismissRequest = { onDismiss() },
-            title = { Text("Enter Marker Name") },
-            text = {
-                TextField(
-                    value = markerName.value,
-                    onValueChange = { markerName.value = it },
-                    placeholder = { Text("Name") },
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { onConfirm() }
-                ) {
-                    Text("Confirm")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { onDismiss() }
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 }
 @Composable
