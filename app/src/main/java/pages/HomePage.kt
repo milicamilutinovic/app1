@@ -47,6 +47,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.gson.Gson
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.example.app1.view.MarkerViewModel
+import com.google.firebase.firestore.GeoPoint
 
 @Composable
 fun HomePage(
@@ -209,7 +210,8 @@ fun HomePage(
 
     if (showFilterDialog) {
         LandmarkFilterDialog(
-            onDismiss = { showFilterDialog = false }
+            onDismiss = { showFilterDialog = false },
+            centerPoint = currentLocation.value?.let { GeoPoint(it.latitude, it.longitude) } ?: GeoPoint(0.0, 0.0) // Default center point
         )
     }
 
@@ -515,30 +517,7 @@ fun HomePage(
         }
     }
 }
-@Composable
-fun LandmarkFilterDialog(
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = { onDismiss() },
-        title = { Text("Apply Filters") },
-        text = { /* Add filter options here */ },
-        confirmButton = {
-            TextButton(
-                onClick = { onDismiss() /* Apply filters */ }
-            ) {
-                Text("Apply")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = { onDismiss() }
-            ) {
-                Text("Cancel")
-            }
-        }
-    )
-}
+
 
 class HomeViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

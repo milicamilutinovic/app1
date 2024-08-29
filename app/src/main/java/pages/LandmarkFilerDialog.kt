@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,11 +26,13 @@ import com.example.app1.view.MarkerViewModel
 import com.example.app1.data.Resource
 import com.example.app1.view.User
 import com.example.app1.view.UsersViewModel
+import com.google.firebase.firestore.GeoPoint
 
 
 @Composable
 fun LandmarkFilterDialog(
     onDismiss: () -> Unit,
+    centerPoint: GeoPoint, // Added center point parameter
     eventViewModel: LandmarkViewModel = viewModel(),
     usersViewModel: UsersViewModel = viewModel()
 ) {
@@ -42,6 +45,7 @@ fun LandmarkFilterDialog(
     var isCrowdLevelDropdownExpanded by remember { mutableStateOf(false) }
     var selectedCrowdLevel by remember { mutableStateOf(0) }
     var category by remember { mutableStateOf("Select Category") }
+    var radius by remember { mutableStateOf(1f) } // Initialize with a default value
 
     // Inspecting eventsResource and creating eventsState
     // Prikupite podatke o događajima
@@ -179,6 +183,17 @@ fun LandmarkFilterDialog(
                         )
                     }
                 }
+                // Spacer
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Slider for radius
+                Text(text = "Radius: ${radius.toInt()} km")
+                Slider(
+                    value = radius,
+                    onValueChange = { newRadius -> radius = newRadius },
+                    valueRange = 1f..50f, // Example range for radius
+                    steps = 49 // Number of steps between min and max value
+                )
             }
         },
         confirmButton = {
@@ -188,7 +203,7 @@ fun LandmarkFilterDialog(
                         // Handle filtered markers
                     }
                 } else {
-                    markerViewModel.filterMarkers(category, chooseEventName, selectedCrowdLevel)
+                    markerViewModel.filterMarkers(category, chooseEventName, selectedCrowdLevel,radius, centerPoint)
                 }
                 onDismiss()
             }) {

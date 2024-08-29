@@ -103,7 +103,7 @@ class LocationService : Service() {
                         val distance = calculateDistance(latitude, longitude, it.latitude, it.longitude)
                         if (distance <= 100 && !notifiedLandmarks.contains(document.id)) {
                             val eventName = document.getString("eventName") ?: "Landmark"
-                            Log.d("LocationService", "Retrieved eventName: $eventName")
+
                             sendNearbyLandmarkNotification(document.id, eventName)
                             notifiedLandmarks.add(document.id)
                         }
@@ -116,7 +116,7 @@ class LocationService : Service() {
     }
 
     private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-        val earthRadius = 6371.0 // Correct Earth radius in kilometers
+        val earthRadius = 6371000.0 // Correct Earth radius in kilometers
 
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)
